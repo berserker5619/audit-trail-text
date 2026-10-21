@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 (unreleased)
+## 1.1.0 (2026-10-21)
 
 The 1.1 candidates from the 1.0.0 edge-case round (#1 to #8). Some codes, stored changes and errors differ from 1.0.x, as listed.
 
