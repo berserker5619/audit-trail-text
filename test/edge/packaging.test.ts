@@ -5,9 +5,9 @@
 //   npm run build && EDGE_PACKAGING=1 node --test test/edge/packaging.test.ts
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { WRONG } from './helpers.ts';
 
 const enabled = process.env['EDGE_PACKAGING'] === '1';
 type Result = { name: string; ok: boolean; detail: string };
@@ -44,10 +44,16 @@ test('19d. CommonJS require works on this Node (it can require ES modules)', { s
   for (const r of result(/^CommonJS require, this Node/)) assert.ok(r.ok, `${r.name}: ${r.detail}`);
 });
 
-test('19e. CommonJS require works on Node 18, which engines promises', { ...WRONG, skip }, () => {
-  for (const r of result(/^CommonJS require, Node 18/)) assert.ok(r.ok, `${r.name}: ${r.detail}`);
+// ESM-only, as the README states: require() needs a Node that can require ES modules.
+test('19e. the README says the package is ESM-only, and which Node versions can require it', () => {
+  const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
+  assert.match(readme, /ESM-only/);
+  assert.match(readme, /20\.19/);
+  assert.match(readme, /22\.12/);
 });
 
-test('19f. a TypeScript CommonJS project (node16 resolution) can import the package', { ...WRONG, skip }, () => {
-  for (const r of result(/CommonJS package/)) assert.ok(r.ok, `${r.name}: ${r.detail}`);
+test('19f. as documented, CommonJS require fails on Node 18, and a TypeScript CommonJS project cannot import it', { skip }, () => {
+  const rs = [...result(/^CommonJS require, Node 18/), ...result(/CommonJS package/)];
+  assert.equal(rs.length, 3);
+  for (const r of rs) assert.equal(r.ok, false, `${r.name} unexpectedly works: if so, update the README`);
 });

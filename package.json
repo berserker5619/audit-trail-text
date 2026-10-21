@@ -1,6 +1,6 @@
 {
   "name": "audit-trail-text",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Diff two versions of a JSON record against its JSON Schema: structured changes with stable codes, and one plain sentence per change.",
   "keywords": [
     "audit",

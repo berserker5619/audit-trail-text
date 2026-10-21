@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { describe, describeChanges, diffRecords, jsonSchemaAdapter } from '../../src/index.ts';
-import { DECISION, schema, sentences, WRONG } from './helpers.ts';
+import { schema, sentences } from './helpers.ts';
 
 const text = schema({ v: { type: 'string', title: 'V' } });
 
@@ -58,13 +58,20 @@ test('3. HTML and newlines are kept as plain text in parts', () => {
   assert.ok(s!.parts.every((p) => typeof p.text === 'string' && Object.keys(p).sort().join() === 'text,type'));
 });
 
-test('3b. the README tells apps to escape parts when rendering HTML', WRONG, () => {
+test('3b. the README tells apps to escape parts, and to isolate mixed-direction text, when rendering', () => {
   const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
-  assert.match(readme, /escape/i);
+  const rendering = readme.slice(readme.indexOf('## Rendering'));
+  assert.ok(readme.includes('## Rendering'));
+  assert.match(rendering.slice(0, 1500), /escape/i);
+  assert.match(rendering.slice(0, 1500), /isolat/i);
 });
 
-test(`3c. ${DECISION} a newline in a value is printed as is, so a sentence can span lines`, () => {
-  assert.deepEqual(sentences(text, { v: 'a' }, { v: 'line 1\nline 2' }), ['V changed from "a" to "line 1\nline 2"']);
+test('3c. a newline in a value shows as ↵, so a sentence stays on one line; the raw value is kept', () => {
+  assert.deepEqual(sentences(text, { v: 'a' }, { v: 'line 1\nline 2' }), ['V changed from "a" to "line 1↵line 2"']);
+  assert.deepEqual(sentences(text, { v: 'a' }, { v: 'x\r\ny\rz' }), ['V changed from "a" to "x↵y↵z"']);
+  const [s] = describeChanges({ v: 'a' }, { v: 'line 1\nline 2' }, text);
+  assert.equal(s!.change.after, 'line 1\nline 2');
+  assert.ok(!s!.text.includes('\n'));
 });
 
 test('4. inputs are not mutated, and frozen inputs work', () => {

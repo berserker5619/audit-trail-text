@@ -15,7 +15,7 @@ const orders = schema({
 });
 const codes = (cs: Change[]) => cs.map((c) => c.code);
 
-test(`10. ${DECISION} item keys 1 and "1" are different items, and both are labelled "1"`, () => {
+test('10. item keys 1 and "1" are different items, both labelled "1" (documented as intended)', () => {
   assert.deepEqual(codes(diffRecords({ o: [{ id: 1 }] }, { o: [{ id: '1' }] }, orders)), ['ITEM_REMOVED', 'ITEM_ADDED']);
   assert.deepEqual(sentences(orders, { o: [{ id: 1 }] }, { o: [{ id: '1' }] }), ['Order "1" removed from Orders', 'Order "1" added to Orders']);
 });

@@ -46,6 +46,7 @@ export type MessageKey =
   | 'FIELD_SET:redacted'
   | 'FIELD_CLEARED:redacted'
   | 'FIELD_CHANGED:redacted'
+  | 'FIELD_CHANGED:unicode'
   | 'ITEM_ADDED:value'
   | 'ITEM_REMOVED:value'
   | 'ITEM_ADDED:redacted'
@@ -74,6 +75,7 @@ export const defaultMessages: Readonly<Record<MessageKey, string>> = {
   'FIELD_SET:redacted': '{field} set',
   'FIELD_CLEARED:redacted': '{field} cleared',
   'FIELD_CHANGED:redacted': '{field} changed',
+  'FIELD_CHANGED:unicode': '{field} changed from {before} to {after} (Unicode form changed)',
   ITEM_ADDED: '{itemNoun} {item} added to {list}',
   ITEM_REMOVED: '{itemNoun} {item} removed from {list}',
   'ITEM_ADDED:value': '{item} added to {list}',
@@ -123,11 +125,30 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
   const parents = labels.slice(0, Math.max(listIndex, 0));
 
   const redacted = change.redacted === true;
-  const before = redacted ? EMPTY : fmt.value(change.before, display.beforeLabel, change);
-  const after = redacted ? EMPTY : fmt.value(change.after, display.afterLabel, change);
+  let before = redacted ? EMPTY : fmt.value(change.before, display.beforeLabel, change);
+  let after = redacted ? EMPTY : fmt.value(change.after, display.afterLabel, change);
+  // Two date-times that format the same: the same instant written with different offsets shows
+  // its offsets; anything else (seconds, precision) is shown as written.
+  if (change.code === 'FIELD_CHANGED' && !redacted && display.format === 'date-time' && before.text === after.text) {
+    const b = String(change.before);
+    const a = String(change.after);
+    const ob = offsetOf(b);
+    const oa = offsetOf(a);
+    if (ob && oa && ob !== oa && Date.parse(b) === Date.parse(a)) {
+      before = plain(`${before.text} (${ob})`);
+      after = plain(`${after.text} (${oa})`);
+    } else {
+      before = fmt.asWritten(b);
+      after = fmt.asWritten(a);
+    }
+  }
+  const unicodeOnly =
+    change.code === 'FIELD_CHANGED' && !redacted &&
+    typeof change.before === 'string' && typeof change.after === 'string' &&
+    change.before !== change.after && change.before.normalize('NFC') === change.after.normalize('NFC');
   const item: Formatted = isItem && !redacted
     ? objectItem
-      ? { text: change.item?.label ?? '', quoted: true }
+      ? { text: visible(change.item?.label ?? ''), quoted: true }
       : change.code === 'ITEM_ADDED' ? after : before
     : EMPTY;
 
@@ -142,7 +163,7 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
     record: plain(isRecord ? (labels[0] ?? '') : ''),
   };
 
-  const key = messageKey(change, objectItem);
+  const key = unicodeOnly ? 'FIELD_CHANGED:unicode' : messageKey(change, objectItem);
   const custom = options.messages?.[key] ?? (key !== change.code ? options.messages?.[change.code] : undefined);
   const template = custom ?? defaultMessages[key];
 
@@ -209,6 +230,28 @@ function fill(template: string, values: Record<string, Formatted>): SentencePart
   return parts.filter((p) => p.text);
 }
 
+/** The offset a date-time is written with, as "+05:30"; "Z" reads as "+00:00". */
+function offsetOf(v: string): string | undefined {
+  const m = /(Z|[+-]\d{2}:?\d{2})$/i.exec(v);
+  if (!m) return undefined;
+  if (m[1]!.toUpperCase() === 'Z') return '+00:00';
+  return m[1]!.length === 5 ? `${m[1]!.slice(0, 3)}:${m[1]!.slice(3)}` : m[1];
+}
+
+/**
+ * Makes characters that print as nothing, or as an ordinary space, visible in a sentence:
+ * newlines as ↵, tabs as ⇥, other control characters as their control pictures. Raw values
+ * stay as they are in the change.
+ */
+function visible(text: string): string {
+  return text.replace(/\r\n|[\u0000-\u001f\u007f-\u009f]/g, (c) => {
+    if (c === '\r\n' || c === '\n' || c === '\r') return '↵';
+    if (c === '\t') return '⇥';
+    if (c === '\u007f') return '␡';
+    return c < ' ' ? String.fromCharCode(0x2400 + c.charCodeAt(0)) : '\ufffd';
+  });
+}
+
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 // An offset is required: without one, Date.parse would read the machine's time zone.
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
@@ -218,6 +261,7 @@ class Formatter {
   readonly #number: Intl.NumberFormat;
   readonly #date: Intl.DateTimeFormat;
   readonly #dateTime: Intl.DateTimeFormat;
+  readonly #graphemes: Intl.Segmenter | undefined;
 
   constructor(options: DescribeOptions) {
     const locale = options.locale ?? 'en';
@@ -227,6 +271,7 @@ class Formatter {
     // Date-only values are built at UTC midnight and shown in UTC, so no time zone can shift them.
     this.#date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     this.#dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone });
+    this.#graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(locale, { granularity: 'grapheme' }) : undefined;
   }
 
   value(v: unknown, label: string | undefined, change: Change): Formatted {
@@ -235,7 +280,9 @@ class Formatter {
     const { type, format } = change.display ?? {};
     if (typeof v === 'boolean') return plain(v ? 'Yes' : 'No');
     if (typeof v === 'number') {
-      return plain(type === 'number' || type === 'integer' ? this.#number.format(v) : String(v));
+      if (type !== 'number' && type !== 'integer') return plain(String(v));
+      // Past 2^53 Intl rounds to 17 significant digits; BigInt keeps the digits of the stored number.
+      return plain(this.#number.format(Number.isInteger(v) && !Number.isSafeInteger(v) ? BigInt(v) : v));
     }
     if (typeof v === 'string') {
       if (format === 'date') {
@@ -247,13 +294,20 @@ class Formatter {
         const ms = Date.parse(v);
         if (!Number.isNaN(ms)) return plain(this.#dateTime.format(ms));
       }
-      return { text: this.#cut(v), quoted: true };
+      return this.asWritten(v);
     }
     return plain(this.#cut(canonical(v)));
   }
 
+  /** A text value as written: quoted, with invisible characters shown, cut at maxValueLength. */
+  asWritten(v: string): Formatted {
+    return { text: this.#cut(visible(v)), quoted: true };
+  }
+
+  /** Cuts at maxValueLength user-perceived characters, so no emoji, flag or letter is split. */
   #cut(text: string): string {
-    const chars = [...text];
+    if (text.length <= this.#max) return text;
+    const chars = this.#graphemes ? Array.from(this.#graphemes.segment(text), (s) => s.segment) : [...text];
     return chars.length > this.#max ? `${chars.slice(0, this.#max).join('').trimEnd()}…` : text;
   }
 }

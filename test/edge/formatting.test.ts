@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { describe, diffRecords } from '../../src/index.ts';
-import { DECISION, schema, sentences, WRONG } from './helpers.ts';
+import { DECISION, schema, sentences } from './helpers.ts';
 
 const text = schema({ v: { type: 'string', title: 'V' } });
 const changes = diffRecords({ v: 'a' }, { v: 'b' }, text);
@@ -28,7 +28,7 @@ test('18. long values are cut at maxValueLength with "…", never splitting a su
   assert.ok(!/[\ud800-\udbff](?![\udc00-\udfff])/.test(cut('🌹'.repeat(5), 3)));
 });
 
-test('18b. a cut never splits an emoji sequence, a flag or a Tamil letter', WRONG, () => {
+test('18b. a cut never splits an emoji sequence, a flag or a Tamil letter', () => {
   const family = '👨‍👩‍👧‍👦';
   assert.equal(cut(family.repeat(3), 1), `V set to "${family}…"`);
   assert.equal(cut('🇮🇳🇮🇳🇮🇳', 1), 'V set to "🇮🇳…"');

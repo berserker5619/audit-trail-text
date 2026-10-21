@@ -8,8 +8,10 @@ Give it two versions of a record and its JSON Schema, and it tells you what chan
 - Changes are plain JSON your app can store, and describe later in any wording or language.
 
 ```sh
-npm install audit-trail-text@next   # 1.0 release candidate
+npm install audit-trail-text
 ```
+
+The package is ESM-only: use `import`. `require('audit-trail-text')` works only on Node versions that can require ES modules, Node 20.19 and later or 22.12 and later; on Node 18 it fails with `ERR_REQUIRE_ESM`. A TypeScript project compiled to CommonJS can load it with a dynamic `import()`.
 
 ## Before and after
 
@@ -159,6 +161,11 @@ describeChanges({ zohoId: 'Z-1' }, { zohoId: 'Z-2' }, zoho)[0].text;
 
 Empty means `undefined`, `null`, `""` or `{}`. A missing or `null` list counts as `[]`, so a first item is `ITEM_ADDED`. Lists of plain values are compared by value, counting duplicates, and their order is never reported.
 
+Values are compared exactly, by design:
+
+- A value of only spaces is not empty, so `""` to `" "` is `FIELD_SET`. Trim values before diffing if spaces don't matter to you.
+- `1` and `"1"` are different values, and different item keys: an order keyed `1` that comes back keyed `"1"` reads as one order removed and another added. Store keys with one type.
+
 Each change is plain, JSON-safe data:
 
 ```ts
@@ -277,6 +284,14 @@ describe(JSON.parse(stored), { locale: 'fr-FR', messages: fr, translateLabel: (l
 ```
 
 `translateLabel(label, { kind, schemaPath })` translates your own words: field and list titles, item nouns and the record noun, with `kind` set to `field`, `list`, `itemNoun` or `record`. Item names such as "Blue kurta" are data and never go through it. Value labels such as "Active customer" come from the schema, so translate them with a translated schema or labels file. The package never ships translations of an app's own words.
+
+## Rendering
+
+`text` and the pieces in `parts` are plain text, built from your users' data. When you show them in HTML, escape them like any other user input: set `textContent`, or let your framework escape them. Never assign them to `innerHTML`.
+
+Values can be in any script. When a sentence mixes directions, such as Arabic or Hebrew values in an English sentence, wrap each value in its own direction isolate so the punctuation around it stays in place: render each `value` part in `<bdi>`, or between U+2068 FIRST STRONG ISOLATE and U+2069 POP DIRECTIONAL ISOLATE in plain text.
+
+Characters that print as nothing are shown visibly in sentences, never in the stored values: a newline as ↵, a tab as ⇥, other control characters as their control pictures (␀, ␛). When two text values differ only in Unicode form, such as "é" stored as one character or two, the sentence ends "(Unicode form changed)". When two date-times are the same instant written with different offsets, the offsets are shown: "10:00 am (+05:30) to 10:00 am (+00:00)".
 
 ## License
 
