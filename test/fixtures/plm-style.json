@@ -1,0 +1,305 @@
+{
+  "schema": {
+    "title": "Style",
+    "type": "object",
+    "properties": {
+      "styleNo": {
+        "type": "string",
+        "title": "Style no."
+      },
+      "season": {
+        "type": "string",
+        "enum": [
+          "SS27",
+          "AW27"
+        ]
+      },
+      "fabric": {
+        "type": "object",
+        "properties": {
+          "composition": {
+            "type": "string"
+          },
+          "gsm": {
+            "type": "number",
+            "title": "GSM"
+          }
+        }
+      },
+      "costing": {
+        "type": "object",
+        "x-sensitive": true,
+        "properties": {
+          "fob": {
+            "type": "number"
+          }
+        }
+      },
+      "colourways": {
+        "type": "array",
+        "x-key": "code",
+        "x-label": "{name}",
+        "items": {
+          "type": "object",
+          "title": "Colourway",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sizes": {
+              "type": "array",
+              "x-key": [
+                "size",
+                "fit"
+              ],
+              "items": {
+                "type": "object",
+                "title": "Size",
+                "properties": {
+                  "size": {
+                    "type": "string"
+                  },
+                  "fit": {
+                    "type": "string"
+                  },
+                  "qty": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "launchDate": {
+        "type": "string",
+        "format": "date"
+      }
+    }
+  },
+  "labels": {
+    "/colourways/*/sizes/*/qty": "Quantity",
+    "/fabric/composition": "Composition"
+  },
+  "before": {
+    "styleNo": "ST-1001",
+    "season": "SS27",
+    "fabric": {
+      "composition": "100% cotton",
+      "gsm": 180
+    },
+    "costing": {
+      "fob": 4.2
+    },
+    "colourways": [
+      {
+        "code": "NVY",
+        "name": "Navy",
+        "sizes": [
+          {
+            "size": "M",
+            "fit": "Regular",
+            "qty": 100
+          },
+          {
+            "size": "L",
+            "fit": "Regular",
+            "qty": 80
+          }
+        ]
+      },
+      {
+        "code": "RED",
+        "name": "Red",
+        "sizes": []
+      }
+    ],
+    "launchDate": "2026-10-05"
+  },
+  "after": {
+    "styleNo": "ST-1001",
+    "season": "AW27",
+    "fabric": {
+      "composition": "95% cotton, 5% elastane",
+      "gsm": 180
+    },
+    "costing": {
+      "fob": 4.5
+    },
+    "colourways": [
+      {
+        "code": "RED",
+        "name": "Red",
+        "sizes": [
+          {
+            "size": "M",
+            "fit": "Slim",
+            "qty": 40
+          }
+        ]
+      },
+      {
+        "code": "NVY",
+        "name": "Navy",
+        "sizes": [
+          {
+            "size": "M",
+            "fit": "Regular",
+            "qty": 120
+          },
+          {
+            "size": "L",
+            "fit": "Regular",
+            "qty": 80
+          }
+        ]
+      }
+    ],
+    "launchDate": null
+  },
+  "expected": [
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/season",
+      "afterPath": "/season",
+      "schemaPath": "/properties/season",
+      "labels": [
+        "Season"
+      ],
+      "before": "SS27",
+      "after": "AW27",
+      "display": {
+        "type": "string",
+        "beforeLabel": "SS27",
+        "afterLabel": "AW27"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/fabric/composition",
+      "afterPath": "/fabric/composition",
+      "schemaPath": "/properties/fabric/properties/composition",
+      "labels": [
+        "Fabric",
+        "Composition"
+      ],
+      "before": "100% cotton",
+      "after": "95% cotton, 5% elastane",
+      "display": {
+        "type": "string"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/costing/fob",
+      "afterPath": "/costing/fob",
+      "schemaPath": "/properties/costing/properties/fob",
+      "labels": [
+        "Costing",
+        "Fob"
+      ],
+      "display": {
+        "type": "number"
+      },
+      "redacted": true,
+      "inSchema": true
+    },
+    {
+      "code": "ITEM_ADDED",
+      "afterPath": "/colourways/0/sizes/0",
+      "schemaPath": "/properties/colourways/items/properties/sizes/items",
+      "labels": [
+        "Colourways",
+        "Red",
+        "Sizes",
+        "M, Slim"
+      ],
+      "after": {
+        "size": "M",
+        "fit": "Slim",
+        "qty": 40
+      },
+      "item": {
+        "key": [
+          "M",
+          "Slim"
+        ],
+        "label": "M, Slim"
+      },
+      "display": {
+        "type": "object",
+        "itemNoun": "Size"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/colourways/0/sizes/0/qty",
+      "afterPath": "/colourways/1/sizes/0/qty",
+      "schemaPath": "/properties/colourways/items/properties/sizes/items/properties/qty",
+      "labels": [
+        "Colourways",
+        "Navy",
+        "Sizes",
+        "M, Regular",
+        "Quantity"
+      ],
+      "before": 100,
+      "after": 120,
+      "item": {
+        "key": [
+          "M",
+          "Regular"
+        ],
+        "label": "M, Regular"
+      },
+      "display": {
+        "type": "integer"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "LIST_REORDERED",
+      "beforePath": "/colourways",
+      "afterPath": "/colourways",
+      "schemaPath": "/properties/colourways",
+      "labels": [
+        "Colourways"
+      ],
+      "before": [
+        "NVY",
+        "RED"
+      ],
+      "after": [
+        "RED",
+        "NVY"
+      ],
+      "display": {
+        "type": "array",
+        "itemNoun": "Colourway"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CLEARED",
+      "beforePath": "/launchDate",
+      "afterPath": "/launchDate",
+      "schemaPath": "/properties/launchDate",
+      "labels": [
+        "Launch Date"
+      ],
+      "before": "2026-10-05",
+      "after": null,
+      "display": {
+        "type": "string",
+        "format": "date"
+      },
+      "inSchema": true
+    }
+  ]
+}

@@ -1,0 +1,342 @@
+{
+  "schema": {
+    "title": "Contact",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Name"
+      },
+      "phone": {
+        "type": "string",
+        "title": "Phone"
+      },
+      "email": {
+        "type": "string",
+        "format": "email"
+      },
+      "status": {
+        "type": "string",
+        "oneOf": [
+          {
+            "const": "lead",
+            "title": "Lead"
+          },
+          {
+            "const": "active",
+            "title": "Active customer"
+          }
+        ]
+      },
+      "password": {
+        "type": "string",
+        "writeOnly": true
+      },
+      "primaryAddress": {
+        "$ref": "#/$defs/address"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "title": "Tag"
+        }
+      },
+      "orders": {
+        "type": "array",
+        "title": "Orders",
+        "x-key": "id",
+        "x-label": "{product}",
+        "items": {
+          "type": "object",
+          "title": "Order",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "product": {
+              "type": "string"
+            },
+            "qty": {
+              "type": "integer",
+              "title": "Quantity"
+            },
+            "syncedAt": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "$defs": {
+      "address": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "pin": {
+            "type": "string",
+            "title": "PIN"
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "ignore": [
+      "/updatedAt",
+      "/orders/*/syncedAt"
+    ]
+  },
+  "before": {
+    "name": "Rajesh Kumar",
+    "phone": "98400 11111",
+    "status": "lead",
+    "password": "old",
+    "primaryAddress": {
+      "city": "Chennai",
+      "pin": "600001"
+    },
+    "tags": [
+      "retail",
+      "vip"
+    ],
+    "orders": [
+      {
+        "id": "A1",
+        "product": "Blue kurta",
+        "qty": 2,
+        "syncedAt": "1"
+      },
+      {
+        "id": "A2",
+        "product": "Red saree",
+        "qty": 1,
+        "syncedAt": "1"
+      }
+    ],
+    "updatedAt": "2026-10-01T10:00:00Z",
+    "legacyId": 17
+  },
+  "after": {
+    "name": "Rajesh Kumar",
+    "phone": "98400 22222",
+    "status": "active",
+    "password": "new",
+    "email": "r.kumar@example.com",
+    "primaryAddress": {
+      "city": "Chennai",
+      "pin": "600002"
+    },
+    "tags": [
+      "vip",
+      "wholesale"
+    ],
+    "orders": [
+      {
+        "id": "A3",
+        "product": "Green dupatta",
+        "qty": 1,
+        "syncedAt": "2"
+      },
+      {
+        "id": "A1",
+        "product": "Blue kurta",
+        "qty": 3,
+        "syncedAt": "2"
+      }
+    ],
+    "updatedAt": "2026-10-21T10:00:00Z",
+    "legacyId": 18
+  },
+  "expected": [
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/phone",
+      "afterPath": "/phone",
+      "schemaPath": "/properties/phone",
+      "labels": [
+        "Phone"
+      ],
+      "before": "98400 11111",
+      "after": "98400 22222",
+      "display": {
+        "type": "string"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_SET",
+      "beforePath": "/email",
+      "afterPath": "/email",
+      "schemaPath": "/properties/email",
+      "labels": [
+        "Email"
+      ],
+      "after": "r.kumar@example.com",
+      "display": {
+        "type": "string"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/status",
+      "afterPath": "/status",
+      "schemaPath": "/properties/status",
+      "labels": [
+        "Status"
+      ],
+      "before": "lead",
+      "after": "active",
+      "display": {
+        "type": "string",
+        "beforeLabel": "Lead",
+        "afterLabel": "Active customer"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/password",
+      "afterPath": "/password",
+      "schemaPath": "/properties/password",
+      "labels": [
+        "Password"
+      ],
+      "display": {
+        "type": "string"
+      },
+      "redacted": true,
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/primaryAddress/pin",
+      "afterPath": "/primaryAddress/pin",
+      "schemaPath": "/properties/primaryAddress/properties/pin",
+      "labels": [
+        "Primary Address",
+        "PIN"
+      ],
+      "before": "600001",
+      "after": "600002",
+      "display": {
+        "type": "string"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "ITEM_REMOVED",
+      "beforePath": "/tags/0",
+      "schemaPath": "/properties/tags/items",
+      "labels": [
+        "Tags"
+      ],
+      "before": "retail",
+      "display": {
+        "type": "string",
+        "itemNoun": "Tag"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "ITEM_ADDED",
+      "afterPath": "/tags/1",
+      "schemaPath": "/properties/tags/items",
+      "labels": [
+        "Tags"
+      ],
+      "after": "wholesale",
+      "display": {
+        "type": "string",
+        "itemNoun": "Tag"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/orders/0/qty",
+      "afterPath": "/orders/1/qty",
+      "schemaPath": "/properties/orders/items/properties/qty",
+      "labels": [
+        "Orders",
+        "Blue kurta",
+        "Quantity"
+      ],
+      "before": 2,
+      "after": 3,
+      "item": {
+        "key": "A1",
+        "label": "Blue kurta"
+      },
+      "display": {
+        "type": "integer"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "ITEM_REMOVED",
+      "beforePath": "/orders/1",
+      "schemaPath": "/properties/orders/items",
+      "labels": [
+        "Orders",
+        "Red saree"
+      ],
+      "before": {
+        "id": "A2",
+        "product": "Red saree",
+        "qty": 1
+      },
+      "item": {
+        "key": "A2",
+        "label": "Red saree"
+      },
+      "display": {
+        "type": "object",
+        "itemNoun": "Order"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "ITEM_ADDED",
+      "afterPath": "/orders/0",
+      "schemaPath": "/properties/orders/items",
+      "labels": [
+        "Orders",
+        "Green dupatta"
+      ],
+      "after": {
+        "id": "A3",
+        "product": "Green dupatta",
+        "qty": 1
+      },
+      "item": {
+        "key": "A3",
+        "label": "Green dupatta"
+      },
+      "display": {
+        "type": "object",
+        "itemNoun": "Order"
+      },
+      "inSchema": true
+    },
+    {
+      "code": "FIELD_CHANGED",
+      "beforePath": "/legacyId",
+      "afterPath": "/legacyId",
+      "labels": [
+        "Legacy Id"
+      ],
+      "before": 17,
+      "after": 18,
+      "display": {},
+      "inSchema": false
+    }
+  ]
+}
