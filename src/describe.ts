@@ -107,10 +107,12 @@ export function describeChanges(
 function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sentence {
   const translate = (label: string, kind: LabelContext['kind']) =>
     options.translateLabel?.(label, { kind, schemaPath: change.schemaPath }) ?? label;
-  const items = new Set(change.display.itemLabels ?? []);
+  // A change stored without display details (hand-written, or from before 1.0) reads as untyped.
+  const display: Change['display'] = change.display ?? {};
+  const items = new Set(display.itemLabels ?? []);
   const isItem = change.code === 'ITEM_ADDED' || change.code === 'ITEM_REMOVED';
   const isRecord = change.code === 'RECORD_CREATED' || change.code === 'RECORD_DELETED';
-  const objectItem = isItem && change.display.type === 'object';
+  const objectItem = isItem && display.type === 'object';
   // An item change's labels end with the item's name, except for plain values and sensitive lists.
   const last = change.labels.length - 1;
   const listIndex = isItem && items.has(last) ? last - 1 : last;
@@ -121,8 +123,8 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
   const parents = labels.slice(0, Math.max(listIndex, 0));
 
   const redacted = change.redacted === true;
-  const before = redacted ? EMPTY : fmt.value(change.before, change.display.beforeLabel, change);
-  const after = redacted ? EMPTY : fmt.value(change.after, change.display.afterLabel, change);
+  const before = redacted ? EMPTY : fmt.value(change.before, display.beforeLabel, change);
+  const after = redacted ? EMPTY : fmt.value(change.after, display.afterLabel, change);
   const item: Formatted = isItem && !redacted
     ? objectItem
       ? { text: change.item?.label ?? '', quoted: true }
@@ -135,7 +137,7 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
     before,
     after,
     item,
-    itemNoun: plain(isItem ? translate(change.display.itemNoun ?? 'Item', 'itemNoun') : ''),
+    itemNoun: plain(isItem ? translate(display.itemNoun ?? 'Item', 'itemNoun') : ''),
     list: plain(field),
     record: plain(isRecord ? (labels[0] ?? '') : ''),
   };
@@ -230,7 +232,7 @@ class Formatter {
   value(v: unknown, label: string | undefined, change: Change): Formatted {
     if (label !== undefined) return plain(this.#cut(label));
     if (v === undefined || v === null) return EMPTY;
-    const { type, format } = change.display;
+    const { type, format } = change.display ?? {};
     if (typeof v === 'boolean') return plain(v ? 'Yes' : 'No');
     if (typeof v === 'number') {
       return plain(type === 'number' || type === 'integer' ? this.#number.format(v) : String(v));
