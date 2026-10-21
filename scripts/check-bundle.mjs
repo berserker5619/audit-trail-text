@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const MAX_MIN_BYTES = 24 * 1024;
-const MAX_GZIP_BYTES = 8 * 1024;
+// Raised from 8 KB in 1.1.0: map entries, allOf and option checks took the gzipped entry to about
+// 7.8 KB (8,018 bytes), up from 6.9 KB in 1.0.1. Raise it again only for a feature, not drift.
+const MAX_GZIP_BYTES = 10 * 1024;
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const failures = [];

@@ -8,10 +8,12 @@ The 1.1 candidates from the 1.0.0 edge-case round (#1 to #8). Some codes, stored
 - **`allOf`** (#5) is merged: keywords on the field itself win, then entries in order, with `properties` combined. In 1.0.x a field described only through `allOf` was compared as one value.
 - **`LIST_REORDERED`** (#2) stores only the moved items' keys, at most 100, with the count in `display.moved`. In 1.0.x it stored every matched key, twice.
 - **Labels file** (#6): `adapter.unusedLabels` lists entries that match no field; `strictLabels: true` refuses them with `UNKNOWN_LABEL`.
-- **New error codes:**
-  - `INVALID_KEY` (#1): an item key that is an object or an array. 1.0.x accepted it.
-  - `INVALID_RECORD` (#7): a record that is not a plain object or `null`. 1.0.x threw `NOT_JSON`.
-  - `INVALID_OPTION` (#8): an invalid `locale`, `timeZone` or `maxValueLength` in `describe`, or `maxChanges` or `maxDepth` in `diffRecords`, checked up front. 1.0.x threw a raw `RangeError`, from `describe` only when a change needed the option.
+- **Inputs that are now refused.** These worked in 1.0.x, or failed with a different error, and now throw:
+  - `INVALID_RECORD`: a record that is not a plain object or `null`, such as an array. 1.0.x threw `NOT_JSON`.
+  - `INVALID_KEY`: an item key that is an object or an array. 1.0.x accepted it and matched by its JSON.
+  - `UNKNOWN_LABEL`: a labels file entry that matches no field, only with the new `strictLabels: true`. Without it, entries are still accepted and listed in `unusedLabels`.
+  - `INVALID_OPTION`: an invalid `locale`, `timeZone` or `maxValueLength` passed to `describe`, even when no change needs it, and an invalid `maxChanges` or `maxDepth` passed to `diffRecords`. 1.0.x threw a raw `RangeError`, from `describe` only when a change needed the option.
+- **New error codes:** `INVALID_KEY` (#1), `INVALID_RECORD` (#7), `INVALID_OPTION` (#8) and `UNKNOWN_LABEL` (#6), as above.
 - `ChangeDisplay.moved`, `Adapter.unusedLabels`, `ObjectNode.patterns` and `ObjectNode.additional` are new optional fields; `PatternEntry` is a new type.
 
 ## 1.0.1 (2026-10-21)

@@ -218,6 +218,29 @@ suite('messages', () => {
 });
 
 suite('stored changes', () => {
+  test('a LIST_REORDERED change stored by 1.0 (every key, no display.moved) still reads correctly', () => {
+    const stored10: Change = JSON.parse(JSON.stringify({
+      code: 'LIST_REORDERED',
+      beforePath: '/orders',
+      afterPath: '/orders',
+      schemaPath: '/properties/orders',
+      labels: ['Orders'],
+      before: ['A1', 'A2', 'A3'],
+      after: ['A3', 'A1', 'A2'],
+      display: { type: 'array', itemNoun: 'Order' },
+      inSchema: true,
+    }));
+    const [s] = describe([stored10], { locale: 'en-IN' });
+    assert.equal(s!.text, 'Orders reordered');
+    assert.deepEqual(s!.parts, [{ type: 'field', text: 'Orders' }, { type: 'text', text: ' reordered' }]);
+    // The same as 1.1 writes it for the same edit.
+    const fresh = diffRecords({ orders: [{ id: 'A1' }, { id: 'A2' }, { id: 'A3' }] }, { orders: [{ id: 'A3' }, { id: 'A1' }, { id: 'A2' }] }, adapter);
+    assert.equal(describe(fresh)[0]!.text, s!.text);
+    // Nested, with a custom template that uses the list.
+    const nested = { ...stored10, labels: ['Customers', 'Rajesh', 'Orders'], display: { ...stored10.display, itemLabels: [1] } };
+    assert.equal(describe([nested], { messages: { LIST_REORDERED: '{list} order changed' } })[0]!.text, 'Customers › Rajesh: Orders order changed');
+  });
+
   test('describe needs no adapter, and a stored change reads the same after the schema changes', () => {
     const original = jsonSchemaAdapter(contactSchema);
     const stored: Change[] = JSON.parse(JSON.stringify(diffRecords(specBefore, specAfter, original)));
