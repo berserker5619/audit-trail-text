@@ -72,6 +72,8 @@ describeChanges(before, after, adapter, { locale: 'en-IN' }).map((s) => s.text);
 
 Lists of objects are matched by key, never by position. Matched by position, this history would read as if the kurta became a saree. A list of objects with no key in the schema or labels file is refused with `LIST_KEY_MISSING` when the adapter is made.
 
+Key an item by what never changes for it, such as an id. A changed key reads as one item removed and another added: with a key of `["component", "supplier"]`, switching a button's supplier gives `BOM line "Button (YKK)" removed` and `BOM line "Button (Shingora)" added`, not "Supplier changed".
+
 ## What it reads from the schema
 
 | Keyword | Used for |
@@ -126,6 +128,17 @@ describeChanges(
 //    "Stage changed from open to Won",
 //    "Lines › K1 (M): Quantity changed from 1 to 2",
 //    "Line \"K1 (L)\" added to Lines"]
+```
+
+Without a label template, an item with a composite key is named by its key values, such as "M, Regular", which reads awkwardly inside a path like "Colourways › Navy › Sizes › M, Regular: …". Give the list an `x-label` in the schema, or a `#label` entry as above, to name it the way people say it: `"{size} {fit}"` gives "M Regular".
+
+A field with no title gets its key in Title Case, so `zohoId` reads "Zoho Id". Set acronyms and other spellings in the labels file:
+
+```ts
+const zoho = jsonSchemaAdapter({ type: 'object', properties: { zohoId: { type: 'string' } } }, { labels: { '/zohoId': 'Zoho ID' } });
+
+describeChanges({ zohoId: 'Z-1' }, { zohoId: 'Z-2' }, zoho)[0].text;
+// → "Zoho ID changed from \"Z-1\" to \"Z-2\""
 ```
 
 ## Changes
