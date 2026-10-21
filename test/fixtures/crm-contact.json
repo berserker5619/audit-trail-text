@@ -338,5 +338,18 @@
       "display": {},
       "inSchema": false
     }
+  ],
+  "sentences": [
+    "Phone changed from \"98400 11111\" to \"98400 22222\"",
+    "Email set to \"r.kumar@example.com\"",
+    "Status changed from Lead to Active customer",
+    "Password changed",
+    "Primary Address: PIN changed from \"600001\" to \"600002\"",
+    "\"retail\" removed from Tags",
+    "\"wholesale\" added to Tags",
+    "Orders › Blue kurta: Quantity changed from 2 to 3",
+    "Order \"Red saree\" removed from Orders",
+    "Order \"Green dupatta\" added to Orders",
+    "Legacy Id changed from 17 to 18"
   ]
 }

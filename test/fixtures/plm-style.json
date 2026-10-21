@@ -301,5 +301,14 @@
       },
       "inSchema": true
     }
+  ],
+  "sentences": [
+    "Season changed from SS27 to AW27",
+    "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+    "Costing: Fob changed",
+    "Colourways › Red: Size \"M, Slim\" added to Sizes",
+    "Colourways › Navy › Sizes › M, Regular: Quantity changed from 100 to 120",
+    "Colourways reordered",
+    "Launch Date cleared (was 5 Oct 2026)"
   ]
 }

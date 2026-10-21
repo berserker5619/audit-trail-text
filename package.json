@@ -1,6 +1,6 @@
 {
   "name": "audit-trail-text",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Diff two versions of a JSON record against its JSON Schema and get structured changes with stable codes.",
   "type": "module",
   "exports": {
