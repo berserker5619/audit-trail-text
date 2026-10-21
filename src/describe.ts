@@ -1,4 +1,5 @@
 import { diffRecords } from './diff.ts';
+import { DiffError } from './errors.ts';
 import type { Adapter, Change, DiffOptions } from './types.ts';
 import { canonical, isPlainObject } from './util.ts';
 
@@ -267,6 +268,20 @@ class Formatter {
     const locale = options.locale ?? 'en';
     const timeZone = options.timeZone ?? 'UTC';
     this.#max = options.maxValueLength ?? 80;
+    // Checked up front, so a bad option fails the same way whether or not a change needs it.
+    const check = (name: string, value: unknown, valid: () => unknown) => {
+      try {
+        valid();
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : String(e);
+        throw new DiffError('INVALID_OPTION', name, `${name} ${JSON.stringify(value)} is not valid: ${reason}`);
+      }
+    };
+    check('locale', locale, () => Intl.getCanonicalLocales(locale));
+    check('timeZone', timeZone, () => new Intl.DateTimeFormat('en', { timeZone }));
+    check('maxValueLength', this.#max, () => {
+      if (!Number.isInteger(this.#max) || this.#max < 1) throw new Error('it must be a whole number of 1 or more');
+    });
     this.#number = new Intl.NumberFormat(locale, { maximumFractionDigits: 20 });
     // Date-only values are built at UTC midnight and shown in UTC, so no time zone can shift them.
     this.#date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });

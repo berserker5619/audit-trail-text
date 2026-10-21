@@ -46,6 +46,8 @@ export interface ChangeDisplay {
   itemNoun?: string;
   /** Positions in `labels` that hold item names, which are data and never translated. */
   itemLabels?: number[];
+  /** LIST_REORDERED: how many items moved; `before` and `after` hold at most 100 of their keys. */
+  moved?: number;
 }
 
 interface NodeBase {
@@ -71,6 +73,15 @@ export interface ObjectNode extends NodeBase {
   kind: 'object';
   /** In schema order. */
   properties: ReadonlyMap<string, FieldNode>;
+  /** `patternProperties`, in schema order: a key not in `properties` takes the first match. */
+  patterns?: readonly PatternEntry[];
+  /** `additionalProperties`: keys matching neither `properties` nor a pattern. */
+  additional?: FieldNode;
+}
+
+export interface PatternEntry {
+  pattern: RegExp;
+  node: FieldNode;
 }
 
 export interface ObjectListNode extends NodeBase {
@@ -96,6 +107,8 @@ export interface Adapter {
   /** Record noun, such as "Contact". */
   recordNoun: string;
   root: ObjectNode;
+  /** Labels file entries that matched no field, such as typos. */
+  unusedLabels?: readonly string[];
 }
 
 export interface DiffOptions {

@@ -143,8 +143,8 @@ describe('records', () => {
     assert.deepEqual(diff(null, null), []);
   });
 
-  test('a record that is not an object throws NOT_JSON', () => {
-    assert.throws(() => diff([], {}), { code: 'NOT_JSON', side: 'before' });
+  test('a record that is not an object throws INVALID_RECORD', () => {
+    assert.throws(() => diff([], {}), { code: 'INVALID_RECORD', side: 'before' });
   });
 });
 
@@ -183,9 +183,9 @@ describe('lists of objects', () => {
       afterPath: '/orders',
       schemaPath: '/properties/orders',
       labels: ['Orders'],
-      before: ['A', 'B'],
-      after: ['B', 'A'],
-      display: { type: 'array', itemNoun: 'Order' },
+      before: ['B'],
+      after: ['B'],
+      display: { type: 'array', itemNoun: 'Order', moved: 1 },
       inSchema: true,
     });
   });

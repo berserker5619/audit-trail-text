@@ -280,16 +280,15 @@
         "Colourways"
       ],
       "before": [
-        "NVY",
         "RED"
       ],
       "after": [
-        "RED",
-        "NVY"
+        "RED"
       ],
       "display": {
         "type": "array",
-        "itemNoun": "Colourway"
+        "itemNoun": "Colourway",
+        "moved": 1
       },
       "inSchema": true
     },

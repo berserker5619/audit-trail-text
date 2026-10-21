@@ -76,7 +76,9 @@ export function diffRecords(before: unknown, after: unknown, adapter: Adapter, o
 
 function count(value: number | undefined, fallback: number, name: string): number {
   if (value === undefined) return fallback;
-  if (!Number.isInteger(value) || value < 0) throw new RangeError(`${name} must be a whole number of 0 or more`);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new DiffError('INVALID_OPTION', name, `${name} must be a whole number of 0 or more, not ${String(value)}`);
+  }
   return value;
 }
 
@@ -93,7 +95,7 @@ function walkObject(ctx: Ctx, node: ObjectNode | undefined, b: Rec, a: Rec, loc:
     const bv = own(b, key);
     const av = own(a, key);
     if (bv === undefined && av === undefined) continue;
-    const known = node?.properties.get(key);
+    const known = node ? childOf(node, key) : undefined;
     const child = known ?? unknownNode(key, bv, av);
     const segment = escapePointer(key);
     diffField(ctx, child, bv, av, {
@@ -107,6 +109,17 @@ function walkObject(ctx: Ctx, node: ObjectNode | undefined, b: Rec, a: Rec, loc:
       inSchema: loc.inSchema && known !== undefined,
     });
   }
+}
+
+/**
+ * The schema node for a key: a property, else the first matching `patternProperties` entry, else
+ * `additionalProperties`. Map entries are labelled with their key as written.
+ */
+function childOf(node: ObjectNode, key: string): FieldNode | undefined {
+  const property = node.properties.get(key);
+  if (property) return property;
+  const entry = node.patterns?.find((p) => p.pattern.test(key))?.node ?? node.additional;
+  return entry && { ...entry, title: key };
 }
 
 /** Fields the schema doesn't describe: objects are walked, everything else is one value. */
@@ -206,11 +219,43 @@ function diffObjectList(ctx: Ctx, node: ObjectListNode, b: unknown[] | null | un
   const beforeOrder = bi.ids.filter((id) => ai.byId.has(id));
   const afterOrder = ai.ids.filter((id) => bi.byId.has(id));
   if (beforeOrder.some((id, i) => id !== afterOrder[i])) {
-    const keys = (ids: string[], index: Indexed) => ids.map((id) => index.byId.get(id)!.key);
+    // Only the items that moved are stored: those outside a longest run kept in the same order.
+    const moved = movedItems(beforeOrder, afterOrder);
+    const kept = afterOrder.filter((id) => moved.has(id)).slice(0, MAX_REORDER_KEYS);
+    const shown = new Set(kept);
+    const keys = (ids: string[], index: Indexed) => ids.filter((id) => shown.has(id)).map((id) => index.byId.get(id)!.key);
     emit(ctx, make('LIST_REORDERED', at(loc, true, true), node.sensitive
       ? { redacted: true }
-      : { before: keys(beforeOrder, bi), after: keys(afterOrder, ai) }, { type: 'array', itemNoun: node.itemNoun }));
+      : { before: keys(beforeOrder, bi), after: keys(afterOrder, ai) }, { type: 'array', itemNoun: node.itemNoun, moved: moved.size }));
   }
+}
+
+/** At most this many moved keys are stored in a LIST_REORDERED change; `display.moved` has the count. */
+const MAX_REORDER_KEYS = 100;
+
+/**
+ * The items that moved between two orders of the same items: all but a longest subsequence
+ * kept in the same relative order. O(n log n).
+ */
+function movedItems(beforeOrder: string[], afterOrder: string[]): Set<string> {
+  const position = new Map(beforeOrder.map((id, i) => [id, i]));
+  const seq = afterOrder.map((id) => position.get(id)!);
+  const tails: number[] = []; // index into seq of the smallest tail of each run length
+  const prev: number[] = new Array(seq.length);
+  for (let i = 0; i < seq.length; i++) {
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (seq[tails[mid]!]! < seq[i]!) lo = mid + 1;
+      else hi = mid;
+    }
+    prev[i] = lo > 0 ? tails[lo - 1]! : -1;
+    tails[lo] = i;
+  }
+  const stayed = new Set<string>();
+  for (let i = tails.length ? tails[tails.length - 1]! : -1; i >= 0; i = prev[i]!) stayed.add(afterOrder[i]!);
+  return new Set(afterOrder.filter((id) => !stayed.has(id)));
 }
 
 function indexItems(node: ObjectListNode, list: unknown[], path: string, side: 'before' | 'after'): Indexed {
@@ -222,6 +267,9 @@ function indexItems(node: ObjectListNode, list: unknown[], path: string, side: '
     const values = node.key.map((field) => {
       const v = own(item, field);
       if (v == null || v === '') throw new DiffError('ITEM_KEY_MISSING', itemPath, `item has no "${field}"`, { side });
+      if (typeof v === 'object') {
+        throw new DiffError('INVALID_KEY', itemPath, `key field "${field}" must be a string, number or boolean`, { side });
+      }
       return v;
     });
     const key = values.length === 1 ? values[0] : values;
@@ -295,12 +343,12 @@ function strip(v: unknown, node: FieldNode | undefined, lp: string, ctx: Ctx, dr
     return v.map((x) => strip(x, item, itemLp, ctx, dropSensitive));
   }
   if (isPlainObject(v)) {
-    const props = node?.kind === 'object' ? node.properties : undefined;
+    const objectNode = node?.kind === 'object' ? node : undefined;
     const out: Rec = {};
     for (const key of Object.keys(v)) {
       const childLp = `${lp}/${key}`;
       if (ctx.ignore.has(childLp)) continue;
-      const child = props?.get(key);
+      const child = objectNode ? childOf(objectNode, key) : undefined;
       if (dropSensitive && child?.sensitive) continue;
       const x = strip(v[key], child, childLp, ctx, dropSensitive);
       if (x !== undefined) setProp(out, key, x);
@@ -389,7 +437,7 @@ function emit(ctx: Ctx, change: Change): void {
 
 function checkRecord(record: unknown, side: 'before' | 'after', maxDepth: number): void {
   if (record == null) return;
-  if (!isPlainObject(record)) throw new DiffError('NOT_JSON', '', 'a record must be a plain object or null', { side });
+  if (!isPlainObject(record)) throw new DiffError('INVALID_RECORD', '', 'a record must be a plain object or null', { side });
   checkJson(record, '', 1, new Set(), side, maxDepth);
 }
 

@@ -51,6 +51,12 @@ function swapped(c: Change): Change {
   if (c.after !== undefined) out['before'] = c.after;
   if (c.beforePath !== undefined) out['afterPath'] = c.beforePath;
   if (c.afterPath !== undefined) out['beforePath'] = c.afterPath;
+  // A reorder stores the moved keys, and which ones count as moved can differ with ties in each
+  // direction; how many moved can't.
+  if (c.code === 'LIST_REORDERED') {
+    delete out['before'];
+    delete out['after'];
+  }
   const { beforeLabel, afterLabel, ...display } = c.display;
   out['display'] = { ...display, ...(afterLabel !== undefined && { beforeLabel: afterLabel }), ...(beforeLabel !== undefined && { afterLabel: beforeLabel }) };
   return out as unknown as Change;
@@ -80,7 +86,11 @@ test('swapping before and after swaps the codes, values and paths', () => {
     const b = r() < 0.05 ? null : randomRecord(r);
     const a = r() < 0.05 ? null : randomRecord(r);
     const forward = diffRecords(b, a, adapter, opts).map(swapped);
-    const backward = diffRecords(a, b, adapter, opts);
+    const backward = diffRecords(a, b, adapter, opts).map((c) => {
+      if (c.code !== 'LIST_REORDERED') return c;
+      const { before: _b, after: _a, ...rest } = c;
+      return rest as Change;
+    });
     assert.deepEqual(bag(forward), bag(backward), `${JSON.stringify(b)}\n${JSON.stringify(a)}`);
   }
 });

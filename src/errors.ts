@@ -3,14 +3,18 @@ export type DiffErrorCode =
   | 'LIST_KEY_MISSING'
   | 'KEY_NOT_IN_SCHEMA'
   | 'SENSITIVE_KEY'
+  | 'UNKNOWN_LABEL'
   | 'ITEM_KEY_MISSING'
+  | 'INVALID_KEY'
   | 'DUPLICATE_KEY'
+  | 'INVALID_RECORD'
   | 'TOO_DEEP'
-  | 'NOT_JSON';
+  | 'NOT_JSON'
+  | 'INVALID_OPTION';
 
 export class DiffError extends Error {
   readonly code: DiffErrorCode;
-  /** Record path for diff errors, schema or labels path for adapter errors. */
+  /** Record path for diff errors, schema or labels path for adapter errors, the option's name for INVALID_OPTION. */
   readonly path: string;
   /** Which record the path points into, for diff errors. */
   readonly side?: 'before' | 'after';

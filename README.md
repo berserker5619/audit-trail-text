@@ -92,6 +92,8 @@ Key an item by what never changes for it, such as an id. A changed key reads as 
 | `x-key` on an array | Field, or array of fields, that identifies an item |
 | `x-label` on an array | Item name template: `"{firstName} {lastName}"`. Default: the key value |
 | `$ref` to `#/$defs/…` | Followed. External and recursive refs are refused with `INVALID_SCHEMA` |
+| `allOf` | Merged: keywords on the field itself win, then each entry in order; `properties` are combined |
+| `patternProperties`, `additionalProperties` | Map entries, such as `{ "en": "Rose", "ta": "ரோஜா" }`: each key not in `properties` uses the first matching pattern's schema, else `additionalProperties`, and is labelled with the key as written |
 
 Fields the schema doesn't describe are still reported, after the schema's fields, labelled from their key.
 
@@ -130,6 +132,13 @@ describeChanges(
 //    "Stage changed from open to Won",
 //    "Lines › K1 (M): Quantity changed from 1 to 2",
 //    "Line \"K1 (L)\" added to Lines"]
+```
+
+A labels file entry that matches no field, such as a typo, is listed in `adapter.unusedLabels`. Pass `strictLabels: true` to refuse it with `UNKNOWN_LABEL` instead:
+
+```ts
+jsonSchemaAdapter(plainSchema, { labels: { ...labels, '/phnoe': 'Phone' } }).unusedLabels;
+// → ["/phnoe"]
 ```
 
 Without a label template, an item with a composite key is named by its key values, such as "M, Regular", which reads awkwardly inside a path like "Colourways › Navy › Sizes › M, Regular: …". Give the list an `x-label` in the schema, or a `#label` entry as above, to name it the way people say it: `"{size} {fit}"` gives "M Regular".
@@ -184,6 +193,17 @@ diffRecords(before, after, adapter)[2];
 
 `beforePath` and `afterPath` are JSON Pointers into each version, so they differ when an item moved. `display` holds what `describe` needs: the type, the format, labels for these values, and the item noun.
 
+A `LIST_REORDERED` change stores only the items that moved: all but a longest run of items that kept their order. `before` and `after` hold their keys, in each order, at most 100 of them; `display.moved` has how many moved. Swapping two orders moves one of them:
+
+```ts
+diffRecords(
+  { orders: [{ id: 'A1' }, { id: 'A2' }, { id: 'A3' }] },
+  { orders: [{ id: 'A3' }, { id: 'A1' }, { id: 'A2' }] },
+  adapter,
+).map((c) => [c.code, c.before, c.after, c.display.moved]);
+// → [["LIST_REORDERED", ["A3"], ["A3"], 1]]
+```
+
 ### Options
 
 ```ts
@@ -213,7 +233,22 @@ describe([pw]).map((s) => s.text);
 
 ### Errors
 
-Errors are `DiffError` with a stable `code` and a `path`. The adapter refuses schemas it can't use: `INVALID_SCHEMA`, `LIST_KEY_MISSING`, `KEY_NOT_IN_SCHEMA`, and `SENSITIVE_KEY` (a key or item label that uses a sensitive field). `diffRecords` throws `ITEM_KEY_MISSING`, `DUPLICATE_KEY`, `TOO_DEEP` and `NOT_JSON` (functions, `Date` objects, `NaN`, cycles: convert dates to strings first).
+Errors are `DiffError` with a stable `code` and a `path`:
+
+| Code | From | When |
+| --- | --- | --- |
+| `INVALID_SCHEMA` | adapter | A schema it can't read: an external or recursive `$ref`, an invalid pattern |
+| `LIST_KEY_MISSING` | adapter | A list of objects with no `x-key` or `#key` |
+| `KEY_NOT_IN_SCHEMA` | adapter | A key field the item schema doesn't have |
+| `SENSITIVE_KEY` | adapter | A key or item label that uses a sensitive field |
+| `UNKNOWN_LABEL` | adapter | With `strictLabels`, a labels file entry that matches no field |
+| `ITEM_KEY_MISSING` | `diffRecords` | An item without its key, or with a key of `null` or `""` |
+| `INVALID_KEY` | `diffRecords` | A key that is an object or an array; keys are strings, numbers or booleans |
+| `DUPLICATE_KEY` | `diffRecords` | Two items in one list with the same key |
+| `INVALID_RECORD` | `diffRecords` | A record that is not a plain object or `null` |
+| `TOO_DEEP` | `diffRecords` | A record nested deeper than `maxDepth` |
+| `NOT_JSON` | `diffRecords` | Functions, `Date` objects, `NaN`, cycles: convert dates to strings first |
+| `INVALID_OPTION` | both | An option that isn't valid, such as an unknown `timeZone`; `path` is the option's name |
 
 ```ts
 let code = '';

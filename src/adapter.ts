@@ -1,5 +1,5 @@
 import { DiffError } from './errors.ts';
-import type { Adapter, FieldNode, ObjectNode, ValueNode } from './types.ts';
+import type { Adapter, FieldNode, ObjectNode, PatternEntry, ValueNode } from './types.ts';
 import { escapePointer, isPlainObject, templateFields, titleCase } from './util.ts';
 
 export interface AdapterOptions {
@@ -8,6 +8,8 @@ export interface AdapterOptions {
    * items, followed by `#key`, `#label` or `=value` where needed; `#record` names the record.
    */
   labels?: Readonly<Record<string, string>>;
+  /** Refuse labels file entries that match no field, with UNKNOWN_LABEL. Default false. */
+  strictLabels?: boolean;
 }
 
 type Schema = Record<string, unknown>;
@@ -17,6 +19,8 @@ interface Ctx {
   labels: ReadonlyMap<string, string>;
   /** Labels file `=value` entries, by record path. */
   valueLabels: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  /** Labels file keys some field used. */
+  used: Set<string>;
 }
 
 /** Reads a JSON Schema once into a field tree that `diffRecords` can reuse across many diffs. */
@@ -32,11 +36,16 @@ export function jsonSchemaAdapter(schema: unknown, options: AdapterOptions = {})
     if (!byValue) valueLabels.set(path, (byValue = new Map()));
     byValue.set(key.slice(eq + 1), label);
   }
-  const ctx: Ctx = { root: schema, labels, valueLabels };
-  const recordNoun = labels.get('#record') ?? (typeof schema.title === 'string' ? schema.title : 'Record');
+  const ctx: Ctx = { root: schema, labels, valueLabels, used: new Set() };
+  const recordNoun = label(ctx, '#record') ?? (typeof schema['title'] === 'string' ? schema['title'] : 'Record');
   const root = buildNode(ctx, schema, { lp: '', sp: '', fallbackTitle: recordNoun, inherited: false, refs: [], isRoot: true });
   if (root.kind !== 'object') throw invalid('', 'the root of the schema must describe an object');
-  return { recordNoun, root };
+
+  const unusedLabels = [...labels.keys()].filter((key) => !ctx.used.has(key));
+  if (options.strictLabels && unusedLabels.length > 0) {
+    throw new DiffError('UNKNOWN_LABEL', unusedLabels[0]!, `labels file entries match no field: ${unusedLabels.join(', ')}`);
+  }
+  return { recordNoun, root, unusedLabels };
 }
 
 function readLabels(labels: unknown): Map<string, string> {
@@ -51,8 +60,15 @@ function readLabels(labels: unknown): Map<string, string> {
   return out;
 }
 
+/** Reads a labels file entry, noting that it matched a field. */
+function label(ctx: Ctx, key: string): string | undefined {
+  const value = ctx.labels.get(key);
+  if (value !== undefined) ctx.used.add(key);
+  return value;
+}
+
 interface At {
-  /** Record path, with `*` for list items: the labels file key. */
+  /** Record path, with `*` for list items and map entries: the labels file key. */
   lp: string;
   /** Schema path as walked: "/properties/orders/items". */
   sp: string;
@@ -64,15 +80,19 @@ interface At {
 }
 
 function buildNode(ctx: Ctx, raw: unknown, at: At): FieldNode {
-  const { schema: s, refs } = resolve(ctx, raw, at.sp, at.refs);
+  const resolved = resolve(ctx, raw, at.sp, at.refs);
+  const { schema: s, refs } = mergeAllOf(ctx, resolved.schema, at.sp, resolved.refs);
   const ownSensitive = s['writeOnly'] === true || s['x-sensitive'] === true;
   const sensitive = at.inherited || ownSensitive;
-  const title = ctx.labels.get(at.lp) ?? (typeof s['title'] === 'string' ? s['title'] : at.fallbackTitle);
+  const title = label(ctx, at.lp) ?? (typeof s['title'] === 'string' ? s['title'] : at.fallbackTitle);
   const base = { title, schemaPath: at.sp, sensitive, ownSensitive };
   const type = pickType(s['type']);
   const props = s['properties'];
+  const additional = s['additionalProperties'];
+  const patterns = s['patternProperties'];
+  const describesMap = isPlainObject(additional) || isPlainObject(patterns);
 
-  if (type === 'object' || (type === undefined && (props !== undefined || at.isRoot))) {
+  if (type === 'object' || (type === undefined && (props !== undefined || describesMap || at.isRoot))) {
     if (props !== undefined && !isPlainObject(props)) throw invalid(at.sp, '"properties" must be an object');
     const properties = new Map<string, FieldNode>();
     for (const key of Object.keys(props ?? {})) {
@@ -87,7 +107,17 @@ function buildNode(ctx: Ctx, raw: unknown, at: At): FieldNode {
         }),
       );
     }
-    return { kind: 'object', ...base, properties } satisfies ObjectNode;
+    const node: ObjectNode = { kind: 'object', ...base, properties };
+    // Map entries: keys not in `properties`, described by a pattern or by additionalProperties.
+    const entryAt = (sp: string): At => ({ lp: `${at.lp}/*`, sp, fallbackTitle: '', inherited: sensitive, refs });
+    if (isPlainObject(patterns)) {
+      node.patterns = Object.keys(patterns).map((pattern): PatternEntry => ({
+        pattern: compilePattern(pattern, `${at.sp}/patternProperties`),
+        node: buildNode(ctx, patterns[pattern], entryAt(`${at.sp}/patternProperties/${escapePointer(pattern)}`)),
+      }));
+    }
+    if (isPlainObject(additional)) node.additional = buildNode(ctx, additional, entryAt(`${at.sp}/additionalProperties`));
+    return node;
   }
 
   const items = s['items'];
@@ -109,7 +139,7 @@ function buildNode(ctx: Ctx, raw: unknown, at: At): FieldNode {
       if (!child) throw new DiffError('KEY_NOT_IN_SCHEMA', at.lp, `key field "${field}" is not in the item schema`);
       if (child.ownSensitive) throw new DiffError('SENSITIVE_KEY', at.lp, `key field "${field}" is sensitive`);
     }
-    const labelEntry = ctx.labels.get(`${at.lp}#label`);
+    const labelEntry = label(ctx, `${at.lp}#label`);
     const itemLabel = labelEntry ?? (typeof s['x-label'] === 'string' ? s['x-label'] : undefined);
     for (const field of itemLabel ? templateFields(itemLabel) : []) {
       if (item.properties.get(field)?.ownSensitive) {
@@ -136,7 +166,10 @@ function buildNode(ctx: Ctx, raw: unknown, at: At): FieldNode {
       }
     }
   }
-  for (const [value, label] of ctx.valueLabels.get(at.lp) ?? []) valueLabels.set(value, label);
+  for (const [value, text] of ctx.valueLabels.get(at.lp) ?? []) {
+    valueLabels.set(value, text);
+    ctx.used.add(`${at.lp}=${value}`);
+  }
   const node: ValueNode = { kind: 'value', ...base, valueLabels };
   if (type !== undefined) node.type = type;
   if (typeof s['format'] === 'string') node.format = s['format'];
@@ -145,13 +178,53 @@ function buildNode(ctx: Ctx, raw: unknown, at: At): FieldNode {
 }
 
 function listKey(ctx: Ctx, s: Schema, lp: string): string[] {
-  const fromLabels = ctx.labels.get(`${lp}#key`);
+  const fromLabels = label(ctx, `${lp}#key`);
   if (fromLabels !== undefined) return fromLabels.split(',').map((f) => f.trim()).filter(Boolean);
   const xKey = s['x-key'];
   if (typeof xKey === 'string') return xKey ? [xKey] : [];
   if (Array.isArray(xKey) && xKey.every((f) => typeof f === 'string' && f)) return xKey as string[];
   if (xKey !== undefined) throw invalid(lp, '"x-key" must be a field name or an array of field names');
   return [];
+}
+
+/**
+ * Merges `allOf` entries into the schema. Keywords written on the schema itself win, then
+ * entries in order; `properties` are combined, the first definition of a field winning.
+ */
+function mergeAllOf(ctx: Ctx, s: Schema, sp: string, refs: readonly string[]): { schema: Schema; refs: readonly string[] } {
+  const allOf = s['allOf'];
+  if (allOf === undefined) return { schema: s, refs };
+  if (!Array.isArray(allOf)) throw invalid(sp, '"allOf" must be an array');
+  const { allOf: _, ...merged } = s;
+  let chain = refs;
+  allOf.forEach((entry, i) => {
+    const at = `${sp}/allOf/${i}`;
+    const resolved = resolve(ctx, entry, at, refs);
+    const { schema: part, refs: partRefs } = mergeAllOf(ctx, resolved.schema, at, resolved.refs);
+    chain = [...new Set([...chain, ...partRefs])];
+    for (const [keyword, value] of Object.entries(part)) {
+      if (keyword === 'properties' && isPlainObject(value)) {
+        const props: Schema = isPlainObject(merged['properties']) ? { ...merged['properties'] } : {};
+        for (const key of Object.keys(value)) if (!Object.hasOwn(props, key)) props[key] = value[key];
+        merged['properties'] = props;
+      } else if (!Object.hasOwn(merged, keyword)) {
+        merged[keyword] = value;
+      }
+    }
+  });
+  return { schema: merged, refs: chain };
+}
+
+function compilePattern(pattern: string, sp: string): RegExp {
+  try {
+    return new RegExp(pattern, 'u');
+  } catch {
+    try {
+      return new RegExp(pattern);
+    } catch {
+      throw invalid(sp, `pattern "${pattern}" is not a valid regular expression`);
+    }
+  }
 }
 
 /** Follows local $refs, merging keywords written next to the $ref over the target. */

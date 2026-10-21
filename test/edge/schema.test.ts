@@ -2,26 +2,54 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { diffRecords, jsonSchemaAdapter } from '../../src/index.ts';
-import { DECISION, schema, sentences } from './helpers.ts';
+import { schema, sentences } from './helpers.ts';
 
-test(`14. ${DECISION} additionalProperties maps: entries are reported as fields the schema doesn't describe`, () => {
+test('14. additionalProperties maps: each entry uses the value schema, labelled with its key (#3)', () => {
   const s = schema({ name: { type: 'object', title: 'Name', additionalProperties: { type: 'string', title: 'Translation' } } });
   const changes = diffRecords({ name: { en: 'Rose' } }, { name: { en: 'Rose', ta: 'ரோஜா' } }, s);
-  assert.deepEqual(changes.map((c) => [c.code, c.labels, c.inSchema, c.display]), [['FIELD_SET', ['Name', 'Ta'], false, {}]]);
+  assert.deepEqual(changes.map((c) => [c.code, c.labels, c.inSchema, c.schemaPath, c.display]), [
+    ['FIELD_SET', ['Name', 'ta'], true, '/properties/name/additionalProperties', { type: 'string' }],
+  ]);
+  assert.deepEqual(sentences(s, { name: { en: 'Rose' } }, { name: { en: 'Rosa' } }), ['Name: en changed from "Rose" to "Rosa"']);
+  // Sensitive map values are redacted and stripped like any other field.
+  const secrets = schema({ keys: { type: 'object', additionalProperties: { type: 'string', writeOnly: true } } });
+  const [c] = diffRecords({ keys: { a: '1' } }, { keys: { a: '2' } }, secrets);
+  assert.equal(c!.redacted, true);
+  assert.deepEqual(diffRecords(null, { keys: { a: '1' } }, secrets)[0]!.after, { keys: {} });
+  // Declared properties still win over the map.
+  const mixed = schema({ m: { type: 'object', properties: { id: { type: 'string', title: 'ID' } }, additionalProperties: { type: 'integer' } } });
+  assert.deepEqual(diffRecords({ m: { id: 'a', x: 1 } }, { m: { id: 'b', x: 2 } }, mixed).map((c) => c.labels), [['M', 'ID'], ['M', 'x']]);
 });
 
-test(`14b. ${DECISION} patternProperties are ignored the same way`, () => {
-  const s = schema({ sizes: { type: 'object', patternProperties: { '^[A-Z]+$': { type: 'integer', title: 'Units' } } } });
+test('14b. patternProperties: a key takes the first matching pattern, before additionalProperties (#4)', () => {
+  const s = schema({
+    sizes: { type: 'object', patternProperties: { '^[A-Z]+$': { type: 'integer', title: 'Units' } }, additionalProperties: { type: 'string' } },
+  });
   const [c] = diffRecords({ sizes: { M: 1 } }, { sizes: { M: 1000 } }, s);
-  assert.deepEqual([c!.labels, c!.inSchema], [['Sizes', 'M'], false]);
-  assert.deepEqual(sentences(s, { sizes: { M: 1 } }, { sizes: { M: 1000 } }), ['Sizes: M changed from 1 to 1000']);
+  assert.deepEqual([c!.labels, c!.inSchema, c!.schemaPath], [['Sizes', 'M'], true, '/properties/sizes/patternProperties/^[A-Z]+$']);
+  assert.deepEqual(sentences(s, { sizes: { M: 1 } }, { sizes: { M: 1000 } }, { locale: 'en-IN' }), ['Sizes: M changed from 1 to 1,000']);
+  assert.equal(diffRecords({ sizes: { note: 'a' } }, { sizes: { note: 'b' } }, s)[0]!.schemaPath, '/properties/sizes/additionalProperties');
+  assert.throws(() => schema({ x: { type: 'object', patternProperties: { '(': {} } } }), { code: 'INVALID_SCHEMA' });
 });
 
-test(`14c. ${DECISION} allOf is ignored: an object described only through allOf is compared as one value`, () => {
-  const s = schema({ addr: { title: 'Address', allOf: [{ type: 'object', properties: { city: { type: 'string', title: 'City' } } }] } });
-  const changes = diffRecords({ addr: { city: 'A' } }, { addr: { city: 'B' } }, s);
-  assert.deepEqual(changes.map((c) => [c.code, c.labels]), [['FIELD_CHANGED', ['Address']]]);
-  assert.deepEqual(sentences(s, { addr: { city: 'A' } }, { addr: { city: 'B' } }), ['Address changed']);
+test('14c. allOf entries are merged, so their fields are walked and titled (#5)', () => {
+  const s = jsonSchemaAdapter({
+    type: 'object',
+    properties: {
+      addr: { title: 'Address', allOf: [{ $ref: '#/$defs/place' }, { properties: { pin: { type: 'string', title: 'PIN' }, city: { title: 'Ignored' } } }] },
+    },
+    $defs: { place: { type: 'object', properties: { city: { type: 'string', title: 'City' } } } },
+  });
+  const changes = diffRecords({ addr: { city: 'A', pin: '1' } }, { addr: { city: 'B', pin: '2' } }, s);
+  assert.deepEqual(changes.map((c) => [c.code, c.labels, c.schemaPath]), [
+    ['FIELD_CHANGED', ['Address', 'City'], '/properties/addr/properties/city'],
+    ['FIELD_CHANGED', ['Address', 'PIN'], '/properties/addr/properties/pin'],
+  ]);
+  // Keywords on the field itself win over allOf entries; nested allOf is merged too.
+  const nested = schema({ n: { title: 'Own', allOf: [{ title: 'Entry', allOf: [{ type: 'integer' }] }] } });
+  assert.deepEqual(diffRecords({ n: 1 }, { n: 2 }, nested)[0]!.labels, ['Own']);
+  assert.equal(diffRecords({ n: 1 }, { n: 2 }, nested)[0]!.display.type, 'integer');
+  assert.throws(() => schema({ x: { allOf: {} } }), { code: 'INVALID_SCHEMA' });
 });
 
 test('14d. anyOf is ignored; the value is compared and shown as written', () => {
@@ -38,17 +66,26 @@ test('14e. type: ["string", "null"] reads as a string, and null is empty', () =>
   assert.deepEqual(sentences(s, { n: 'Raj', c: null }, { n: null, c: 1500 }, { locale: 'en-IN' }), ['Nickname cleared (was "Raj")', 'Count set to 1,500']);
 });
 
-test(`15. ${DECISION} a labels file entry for a path that doesn't exist is silently ignored`, () => {
-  const labels = { '/phnoe': 'Mobile', '/orders#key': 'id', '/status=actvie': 'Active' };
-  const a = jsonSchemaAdapter({ type: 'object', properties: { phone: { type: 'string' }, status: { type: 'string', enum: ['active'] } } }, { labels });
-  assert.equal(a.root.properties.get('phone')!.title, 'Phone');
-  assert.deepEqual(sentences(a, { phone: '1' }, { phone: '2' }), ['Phone changed from "1" to "2"']);
+test('15. labels file entries that match no field are listed in unusedLabels, and refused with strictLabels (#6)', () => {
+  const labels = { '/phnoe': 'Mobile', '/phone': 'Phone no.', '/orders#key': 'id', '/status=active': 'Active', '/stauts=x': 'X', '#record': 'Lead' };
+  const props = { phone: { type: 'string' }, status: { type: 'string', enum: ['active'] } };
+  const a = jsonSchemaAdapter({ type: 'object', properties: props }, { labels });
+  assert.deepEqual(a.unusedLabels, ['/phnoe', '/orders#key', '/stauts=x']);
+  assert.equal(a.root.properties.get('phone')!.title, 'Phone no.');
+  assert.throws(() => jsonSchemaAdapter({ type: 'object', properties: props }, { labels, strictLabels: true }), {
+    code: 'UNKNOWN_LABEL',
+    path: '/phnoe',
+    message: /\/phnoe, \/orders#key, \/stauts=x/,
+  });
+  assert.deepEqual(jsonSchemaAdapter({ type: 'object', properties: props }, { labels: { '/phone': 'P' }, strictLabels: true }).unusedLabels, []);
 });
 
-test(`16. ${DECISION} a top-level array as the record throws NOT_JSON`, () => {
+test('16. a record that is not an object throws INVALID_RECORD (#7)', () => {
   const s = schema({});
-  assert.throws(() => diffRecords([], [1], s), { code: 'NOT_JSON', side: 'before', message: /plain object or null/ });
-  assert.throws(() => diffRecords({}, 'text', s), { code: 'NOT_JSON', side: 'after' });
+  assert.throws(() => diffRecords([], [1], s), { code: 'INVALID_RECORD', side: 'before', message: /plain object or null/ });
+  assert.throws(() => diffRecords({}, 'text', s), { code: 'INVALID_RECORD', side: 'after' });
+  // NOT_JSON stays for values JSON can't represent.
+  assert.throws(() => diffRecords({ d: new Date() }, {}, s), { code: 'NOT_JSON' });
 });
 
 test('16b. both sides null gives no changes', () => {

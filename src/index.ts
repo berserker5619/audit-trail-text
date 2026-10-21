@@ -15,6 +15,7 @@ export type {
   ItemRef,
   ObjectListNode,
   ObjectNode,
+  PatternEntry,
   ValueListNode,
   ValueNode,
 } from './types.ts';

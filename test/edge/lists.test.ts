@@ -26,9 +26,11 @@ test('10b. a key that is null, missing or "" throws ITEM_KEY_MISSING with the it
   }
 });
 
-test(`10c. ${DECISION} a key that is an object is accepted, matched by value and labelled as JSON`, () => {
-  assert.deepEqual(diffRecords({ o: [{ id: { a: 1, b: 2 } }] }, { o: [{ id: { b: 2, a: 1 } }] }, orders), []);
-  assert.deepEqual(sentences(orders, {}, { o: [{ id: { a: 1 } }] }), ['Order "{"a":1}" added to Orders']);
+test('10c. a key that is an object or an array throws INVALID_KEY with the item path (#1)', () => {
+  assert.throws(() => diffRecords({}, { o: [{ id: 'a' }, { id: { a: 1 } }] }, orders), { code: 'INVALID_KEY', path: '/o/1', side: 'after', message: /"id"/ });
+  assert.throws(() => diffRecords({ o: [{ id: [1] }] }, {}, orders), { code: 'INVALID_KEY', side: 'before' });
+  // Strings, numbers and booleans are fine.
+  assert.doesNotThrow(() => diffRecords({}, { o: [{ id: 'a' }, { id: 2 }, { id: true }] }, orders));
 });
 
 test('10d. keys that differ only in case are different items', () => {
@@ -93,7 +95,8 @@ test('12. one edit that moves, changes, adds and removes items at once', () => {
     ['ITEM_ADDED', 'E', null, '/o/1'],
     ['LIST_REORDERED', null, '/o', '/o'],
   ]);
-  assert.deepEqual([changes[3]!.before, changes[3]!.after], [['A', 'B', 'C'], ['C', 'A', 'B']]);
+  // Only the item that moved is stored: A and B kept their order, C moved ahead of them.
+  assert.deepEqual([changes[3]!.before, changes[3]!.after, changes[3]!.display.moved], [['C'], ['C'], 1]);
 });
 
 function bigList(n: number) {
@@ -130,10 +133,18 @@ test('13. 10,000 items with 100 changed, and 10,000 reordered, in linear time', 
   assert.ok(tChanged < 2000 && tReordered < 2000);
 });
 
-test(`13b. ${DECISION} a reorder of 10,000 items stores every key, twice, in one change`, () => {
+test('13b. a reorder stores only the moved keys, at most 100, with the count in display.moved (#2)', () => {
   const before = { o: bigList(10_000) };
-  const [c] = diffRecords(before, { o: [...before.o].reverse() }, orders);
-  assert.equal((c!.before as unknown[]).length, 10_000);
-  assert.equal((c!.after as unknown[]).length, 10_000);
-  assert.ok(JSON.stringify(c).length > 150_000);
+  const [reversed] = diffRecords(before, { o: [...before.o].reverse() }, orders);
+  assert.equal(reversed!.display.moved, 9_999);
+  assert.equal((reversed!.before as unknown[]).length, 100);
+  assert.equal((reversed!.after as unknown[]).length, 100);
+  assert.ok(JSON.stringify(reversed).length < 5_000);
+  // The same keys on both sides, each in its own order.
+  assert.deepEqual([...(reversed!.before as string[])].sort(), [...(reversed!.after as string[])].sort());
+
+  // One item moved from the end to the front of 10,000: one key stored.
+  const moved = { o: [before.o[9_999]!, ...before.o.slice(0, 9_999)] };
+  const [one] = diffRecords(before, moved, orders);
+  assert.deepEqual([one!.before, one!.after, one!.display.moved], [['K9999'], ['K9999'], 1]);
 });
