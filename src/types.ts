@@ -44,6 +44,8 @@ export interface ChangeDisplay {
   afterLabel?: string;
   /** Singular name for the list's items: "Order". */
   itemNoun?: string;
+  /** Positions in `labels` that hold item names, which are data and never translated. */
+  itemLabels?: number[];
 }
 
 interface NodeBase {

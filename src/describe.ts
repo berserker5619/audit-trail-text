@@ -26,6 +26,12 @@ export interface TemplateValues {
   record: string;
 }
 
+export interface LabelContext {
+  kind: 'field' | 'list' | 'itemNoun' | 'record';
+  /** The change's schemaPath; absent for fields the schema doesn't describe. */
+  schemaPath: string | undefined;
+}
+
 export type Template = string | ((change: Change, values: TemplateValues) => string);
 
 /**
@@ -53,11 +59,8 @@ export interface DescribeOptions {
   /** Default 80. Longer values are cut with "…"; raw values stay whole in the change. */
   maxValueLength?: number;
   messages?: Partial<Record<MessageKey, Template>>;
-  /**
-   * Translates labels: field and list titles, item nouns, the record noun. Item names inside the
-   * label path are passed too, so return labels you don't know unchanged.
-   */
-  translateLabel?: (label: string, schemaPath: string | undefined) => string;
+  /** Translates the app's own words. Item names, such as a product called "Rose", never go through it. */
+  translateLabel?: (label: string, context: LabelContext) => string;
 }
 
 /** English templates. Nested fields get "{parents}: " in front. */
@@ -102,12 +105,18 @@ export function describeChanges(
 }
 
 function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sentence {
-  const translate = (label: string) => options.translateLabel?.(label, change.schemaPath) ?? label;
-  const labels = change.labels.map(translate);
+  const translate = (label: string, kind: LabelContext['kind']) =>
+    options.translateLabel?.(label, { kind, schemaPath: change.schemaPath }) ?? label;
+  const items = new Set(change.display.itemLabels ?? []);
   const isItem = change.code === 'ITEM_ADDED' || change.code === 'ITEM_REMOVED';
-  // Object items end their labels with the item's name; plain values don't.
+  const isRecord = change.code === 'RECORD_CREATED' || change.code === 'RECORD_DELETED';
   const objectItem = isItem && change.display.type === 'object';
-  const listIndex = isItem ? labels.length - (objectItem ? 2 : 1) : labels.length - 1;
+  // An item change's labels end with the item's name, except for plain values and sensitive lists.
+  const last = change.labels.length - 1;
+  const listIndex = isItem && items.has(last) ? last - 1 : last;
+  const kindAt = (i: number): LabelContext['kind'] =>
+    isRecord ? 'record' : items.has(i + 1) || (i === listIndex && (isItem || change.code === 'LIST_REORDERED')) ? 'list' : 'field';
+  const labels = change.labels.map((label, i) => (items.has(i) ? label : translate(label, kindAt(i))));
   const field = labels[listIndex] ?? '';
   const parents = labels.slice(0, Math.max(listIndex, 0));
 
@@ -126,9 +135,9 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
     before,
     after,
     item,
-    itemNoun: plain(translate(change.display.itemNoun ?? 'Item')),
+    itemNoun: plain(isItem ? translate(change.display.itemNoun ?? 'Item', 'itemNoun') : ''),
     list: plain(field),
-    record: plain(change.code === 'RECORD_CREATED' || change.code === 'RECORD_DELETED' ? (labels[0] ?? '') : ''),
+    record: plain(isRecord ? (labels[0] ?? '') : ''),
   };
 
   const key = messageKey(change, objectItem);
@@ -140,7 +149,8 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
     const flat = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.text])) as unknown as TemplateValues;
     parts = [{ type: 'text', text: template(change, flat) }];
   } else {
-    const prefixed = custom === undefined && parents.length > 0 && change.code !== 'RECORD_CREATED' && change.code !== 'RECORD_DELETED'
+    // Parents go first unless the template places {parents} itself.
+    const prefixed = !template.includes('{parents}') && parents.length > 0 && !isRecord
       ? `{parents}: ${template}`
       : template;
     parts = fill(prefixed, values);

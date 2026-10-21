@@ -31,6 +31,8 @@ interface Loc {
   sp: string;
   labels: string[];
   item?: ItemRef;
+  /** Positions in `labels` that hold item names. */
+  itemAt: number[];
   inSchema: boolean;
 }
 
@@ -64,7 +66,7 @@ export function diffRecords(before: unknown, after: unknown, adapter: Adapter, o
         before: strip(before, root, '', ctx, true),
       }, { type: 'object' }));
     } else {
-      walkObject(ctx, root, before as Rec, after as Rec, { bp: '', ap: '', lp: '', sp: root.schemaPath, labels: [], inSchema: true });
+      walkObject(ctx, root, before as Rec, after as Rec, { bp: '', ap: '', lp: '', sp: root.schemaPath, labels: [], itemAt: [], inSchema: true });
     }
   } catch (e) {
     if (e !== STOP) throw e;
@@ -101,6 +103,7 @@ function walkObject(ctx: Ctx, node: ObjectNode | undefined, b: Rec, a: Rec, loc:
       sp: known ? child.schemaPath : '',
       labels: [...loc.labels, child.title],
       ...(loc.item && { item: loc.item }),
+      itemAt: loc.itemAt,
       inSchema: loc.inSchema && known !== undefined,
     });
   }
@@ -178,7 +181,7 @@ function diffObjectList(ctx: Ctx, node: ObjectListNode, b: unknown[] | null | un
       ap: `${loc.ap}/${now.index}`,
       lp: itemLp,
       sp: node.item.schemaPath,
-      labels: [...loc.labels, ref?.label ?? node.itemNoun],
+      ...named(loc, ref),
       ...(ref && { item: ref }),
       inSchema: loc.inSchema,
     });
@@ -193,7 +196,7 @@ function diffObjectList(ctx: Ctx, node: ObjectListNode, b: unknown[] | null | un
     emit(ctx, make(code, {
       ...(side === 'before' ? { beforePath: path } : { afterPath: path }),
       schemaPath: node.item.schemaPath,
-      labels: [...loc.labels, ref?.label ?? node.itemNoun],
+      ...named(loc, ref),
       inSchema: loc.inSchema,
     }, values, displayOf(node.item, values, node.itemNoun)));
   };
@@ -233,11 +236,16 @@ function indexItems(node: ObjectListNode, list: unknown[], path: string, side: '
 /** Left out for sensitive lists, so keys and labels can't leak. */
 function itemRef(node: ObjectListNode, item: Rec, key: unknown): ItemRef | undefined {
   if (node.sensitive) return undefined;
-  const text = (v: unknown) => (v == null ? '' : typeof v === 'string' ? v : canonical(v));
-  const fallback = (Array.isArray(key) && node.key.length > 1 ? key : [key]).map(text).join(', ');
-  const label = node.itemLabel
-    ? node.itemLabel.replace(/\{([^{}]+)\}/g, (_, field: string) => text(own(item, field.trim()))).trim()
-    : '';
+  // A stored code is named by its label: an address keyed by `kind: "home"` reads as "Home".
+  const text = (field: string) => {
+    const v = own(item, field);
+    if (v == null) return '';
+    const child = node.item.properties.get(field);
+    const label = child?.kind === 'value' && typeof v !== 'object' ? child.valueLabels.get(String(v)) : undefined;
+    return label ?? (typeof v === 'string' ? v : canonical(v));
+  };
+  const fallback = node.key.map(text).join(', ');
+  const label = node.itemLabel ? node.itemLabel.replace(/\{([^{}]+)\}/g, (_, field: string) => text(field.trim())).trim() : '';
   return { key, label: label || fallback };
 }
 
@@ -265,7 +273,7 @@ function diffValueList(ctx: Ctx, node: ValueListNode, b: unknown[] | null | unde
     const values: Values = node.sensitive
       ? { redacted: true }
       : { [code === 'ITEM_ADDED' ? 'after' : 'before']: strip(value, node.item, itemLp, ctx, true) };
-    const where = { ...path, schemaPath: node.item.schemaPath, labels: [...loc.labels], ...(loc.item && { item: loc.item }), inSchema: loc.inSchema };
+    const where = { ...path, schemaPath: node.item.schemaPath, labels: [...loc.labels], ...(loc.item && { item: loc.item }), itemAt: loc.itemAt, inSchema: loc.inSchema };
     emit(ctx, make(code, where, values, displayOf(node.item, values, node.itemNoun)));
   };
   for (const i of unmatched(bIds, aIds)) whole('ITEM_REMOVED', bl[i], { beforePath: `${loc.bp}/${i}` });
@@ -305,7 +313,14 @@ function strip(v: unknown, node: FieldNode | undefined, lp: string, ctx: Ctx, dr
 // ---------------------------------------------------------------- output
 
 type Values = { before?: unknown; after?: unknown; item?: ItemRef; redacted?: true };
-type Where = Pick<Change, 'beforePath' | 'afterPath' | 'schemaPath' | 'labels' | 'inSchema'>;
+type Where = Pick<Change, 'beforePath' | 'afterPath' | 'schemaPath' | 'labels' | 'inSchema'> & { itemAt?: number[] };
+
+/** Labels for an item: its name is added, except in a sensitive list, where nothing is. */
+function named(loc: Loc, ref: ItemRef | undefined): { labels: string[]; itemAt: number[] } {
+  return ref
+    ? { labels: [...loc.labels, ref.label], itemAt: [...loc.itemAt, loc.labels.length] }
+    : { labels: [...loc.labels], itemAt: loc.itemAt };
+}
 
 function at(loc: Loc, withBefore: boolean, withAfter: boolean): Where & { item?: ItemRef } {
   return {
@@ -314,6 +329,7 @@ function at(loc: Loc, withBefore: boolean, withAfter: boolean): Where & { item?:
     schemaPath: loc.sp,
     labels: [...loc.labels],
     ...(loc.item && { item: loc.item }),
+    itemAt: loc.itemAt,
     inSchema: loc.inSchema,
   };
 }
@@ -331,7 +347,7 @@ function make(code: ChangeCode, where: Partial<Where> & { item?: ItemRef }, valu
   }
   const item = values.item ?? where.item;
   if (item && !values.redacted) ordered.item = { key: item.key, label: item.label };
-  ordered.display = display;
+  ordered.display = where.itemAt?.length ? { ...display, itemLabels: [...where.itemAt] } : display;
   if (values.redacted) ordered.redacted = true;
   ordered.inSchema = where.inSchema ?? true;
   return ordered as Change;

@@ -20,7 +20,7 @@ describe('spec example', () => {
       before: 2,
       after: 3,
       item: { key: 'A1', label: 'Blue kurta' },
-      display: { type: 'integer' },
+      display: { type: 'integer', itemLabels: [1] },
       inSchema: true,
     });
     assert.deepEqual(changes[3]!.item, { key: 'A2', label: 'Red saree' });
@@ -160,7 +160,7 @@ describe('lists of objects', () => {
       labels: ['Orders', 'Green dupatta'],
       after: { id: 'A3', product: 'Green dupatta', qty: 1 },
       item: { key: 'A3', label: 'Green dupatta' },
-      display: { type: 'object', itemNoun: 'Order' },
+      display: { type: 'object', itemNoun: 'Order', itemLabels: [1] },
       inSchema: true,
     }]);
   });
@@ -246,7 +246,7 @@ describe('lists of objects', () => {
       },
     });
     const [c] = diffRecords({}, { cards: [{ last4: '4242' }] }, s);
-    assert.deepEqual(c, { code: 'ITEM_ADDED', afterPath: '/cards/0', schemaPath: '/properties/cards/items', labels: ['Cards', 'Item'], display: { type: 'object', itemNoun: 'Item' }, redacted: true, inSchema: true });
+    assert.deepEqual(c, { code: 'ITEM_ADDED', afterPath: '/cards/0', schemaPath: '/properties/cards/items', labels: ['Cards'], display: { type: 'object', itemNoun: 'Item' }, redacted: true, inSchema: true });
   });
 });
 

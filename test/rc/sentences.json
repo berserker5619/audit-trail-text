@@ -1,0 +1,99 @@
+{
+  "crm": {
+    "contact details edited": [
+      "Email changed from \"rajesh.k@example.com\" to \"rajesh@kumartextiles.in\"",
+      "Mobile changed from \"98400 11111\" to \"98400 22222\""
+    ],
+    "qualified and reassigned": [
+      "Status changed from Lead to Qualified lead",
+      "Account owner changed from \"Priya\" to \"Arun\"",
+      "Source changed from walk-in to referral"
+    ],
+    "tags edited": [
+      "Wholesale removed from Tags",
+      "VIP added to Tags"
+    ],
+    "work address added, home PIN fixed": [
+      "Addresses › Home: PIN code changed from \"600017\" to \"600018\"",
+      "Address \"Work\" added to Addresses"
+    ],
+    "home address removed": [
+      "Address \"Home\" removed from Addresses"
+    ],
+    "notes reordered and one edited": [
+      "Notes › Follow-up call: Body changed from \"Wants samples\" to \"Wants samples by Friday\"",
+      "Notes reordered"
+    ],
+    "PAN corrected and password set": [
+      "PAN changed",
+      "Password set"
+    ],
+    "dates": [
+      "Date of birth set to 14 Mar 1988",
+      "Last contacted changed from 1 Oct 2026, 3:00 pm to 21 Oct 2026, 7:35 pm"
+    ],
+    "credit and opt-in": [
+      "WhatsApp opt-in changed from No to Yes",
+      "Credit limit changed from 50,000 to 1,25,000"
+    ],
+    "company added, last name cleared": [
+      "Last name cleared (was \"Kumar\")",
+      "Company added"
+    ],
+    "field from an integration": [
+      "Zoho Id changed from \"Z-1\" to \"Z-2\""
+    ],
+    "only updatedAt changed": [],
+    "contact created": [
+      "Contact created"
+    ],
+    "contact deleted": [
+      "Contact deleted"
+    ]
+  },
+  "plm": {
+    "approved for next season": [
+      "Season changed from SS27 to AW27",
+      "Stage changed from Proto sample to Approved for production"
+    ],
+    "fabric changed": [
+      "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+      "Fabric: GSM changed from 140 to 160"
+    ],
+    "colourway added": [
+      "Colourway \"Mustard\" added to Colourways"
+    ],
+    "colourway dropped": [
+      "Colourway \"Rose\" removed from Colourways"
+    ],
+    "colourways reordered": [
+      "Colourways reordered"
+    ],
+    "size added, quantity changed": [
+      "Colourways › Navy › Size breakdown › M, Regular: Quantity changed from 300 to 1,250",
+      "Colourways › Rose: Size \"L, Slim\" added to Size breakdown"
+    ],
+    "sizes reordered within a colourway": [
+      "Colourways › Navy: Size breakdown reordered"
+    ],
+    "BOM consumption changed, button supplier switched": [
+      "Bill of materials › Shell fabric (Arvind): Consumption changed from 2.4 to 2.55",
+      "BOM line \"Button (YKK)\" removed from Bill of materials",
+      "BOM line \"Button (Shingora)\" added to Bill of materials"
+    ],
+    "target FOB revised": [
+      "Target FOB (USD) changed"
+    ],
+    "launch date moved": [
+      "Launch date changed from 15 Feb 2027 to 1 Mar 2027"
+    ],
+    "fabric cleared, pantone renamed": [
+      "Fabric removed",
+      "Colourways › Rose: Pantone changed from \"15-1621\" to \"15-1626\""
+    ],
+    "style dropped": [
+      "Stage changed from Proto sample to Dropped",
+      "Launch date cleared (was 15 Feb 2027)"
+    ]
+  }
+}

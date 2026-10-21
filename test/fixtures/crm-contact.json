@@ -276,7 +276,10 @@
         "label": "Blue kurta"
       },
       "display": {
-        "type": "integer"
+        "type": "integer",
+        "itemLabels": [
+          1
+        ]
       },
       "inSchema": true
     },
@@ -299,7 +302,10 @@
       },
       "display": {
         "type": "object",
-        "itemNoun": "Order"
+        "itemNoun": "Order",
+        "itemLabels": [
+          1
+        ]
       },
       "inSchema": true
     },
@@ -322,7 +328,10 @@
       },
       "display": {
         "type": "object",
-        "itemNoun": "Order"
+        "itemNoun": "Order",
+        "itemLabels": [
+          1
+        ]
       },
       "inSchema": true
     },

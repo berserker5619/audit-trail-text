@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  FORCE_COLOR: 0
+
+jobs:
+  # Node is pinned in .nvmrc: Intl output comes from Node's ICU data, and the golden sentences
+  # are checked against one version. Raise it deliberately and regenerate the goldens.
+  gate:
+    name: Typecheck, build, bundle check, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Bundle check
+        run: npm run check:bundle
+      - name: Tests (Node and jsdom)
+        run: npm test
+
+  # Sentences must not depend on the machine's time zone.
+  timezones:
+    name: Tests with TZ=${{ matrix.tz }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tz: [UTC, Asia/Kolkata, America/Los_Angeles]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+        env:
+          TZ: ${{ matrix.tz }}
+
+  # The package promises Node >= 18. Tests run TypeScript directly and need a newer Node, so the
+  # built output is checked on the oldest supported Node instead.
+  oldest-node:
+    name: Built package on Node 18
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 18
+      - run: node scripts/smoke.mjs

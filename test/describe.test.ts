@@ -159,9 +159,12 @@ suite('messages', () => {
     assert.equal(s!.text, 'Phone updated: "1" → "2"');
   });
 
-  test('a custom template gets {parents} only where it asks for it', () => {
-    const messages = { FIELD_CHANGED: '{parents} / {field}: {before} → {after}' };
-    assert.equal(describeChanges(specBefore, specAfter, adapter, { messages })[2]!.text, 'Orders › Blue kurta / Quantity: 2 → 3');
+  test('a custom template gets the parents first, unless it places {parents} itself', () => {
+    const plain = { FIELD_CHANGED: '{field}: {before} → {after}' };
+    assert.equal(describeChanges(specBefore, specAfter, adapter, { messages: plain })[2]!.text, 'Orders › Blue kurta: Quantity: 2 → 3');
+    assert.equal(describeChanges(specBefore, specAfter, adapter, { messages: plain })[0]!.text, 'Phone: "98400 11111" → "98400 22222"');
+    const placed = { FIELD_CHANGED: '{field} ({parents}): {before} → {after}' };
+    assert.equal(describeChanges(specBefore, specAfter, adapter, { messages: placed })[2]!.text, 'Quantity (Orders › Blue kurta): 2 → 3');
   });
 
   test('a variant falls back to its code, then to English', () => {
@@ -189,6 +192,28 @@ suite('messages', () => {
     const ta: Record<string, string> = { Phone: 'தொலைபேசி' };
     const [s] = describeChanges({ phone: '1' }, { phone: '2' }, adapter, { translateLabel: (l) => ta[l] ?? l });
     assert.equal(s!.text, 'தொலைபேசி changed from "1" to "2"');
+  });
+
+  test('translateLabel gets each label with its kind, and never an item name', () => {
+    const seen: string[] = [];
+    const translateLabel = (label: string, { kind }: { kind: string }) => {
+      seen.push(`${kind}:${label}`);
+      return label.toUpperCase();
+    };
+    const b = { orders: [{ id: 'A1', product: 'Rose', qty: 1 }, { id: 'A2', product: 'Rose', qty: 1 }] };
+    const a = { orders: [{ id: 'A2', product: 'Rose', qty: 1 }, { id: 'A1', product: 'Rose', qty: 2 }, { id: 'A3', product: 'Rose' }] };
+    const out = [
+      ...describeChanges(b, a, adapter, { translateLabel }),
+      ...describeChanges(null, { name: 'R' }, adapter, { translateLabel }),
+    ].map((s) => s.text);
+    assert.deepEqual(out, [
+      'ORDERS › Rose: QUANTITY changed from 1 to 2',
+      'ORDER "Rose" added to ORDERS',
+      'ORDERS reordered',
+      'CONTACT created',
+    ]);
+    assert.ok(seen.every((s) => !s.endsWith(':Rose')), seen.join(', '));
+    assert.deepEqual([...new Set(seen)].sort(), ['field:Quantity', 'itemNoun:Order', 'list:Orders', 'record:Contact']);
   });
 });
 
