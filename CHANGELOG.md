@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 (unreleased)
+## 1.2.0 (2026-10-22)
 
 Trees of any depth, objects compared as one value, labels in every language, and moves across parents, so the package can describe Dynamic Entity records and forms. Everything is opt-in or only triggers on schemas 1.1 refused. Changes stored by 1.0 and 1.1 describe as before, except a sentence with more than three enclosing items, which now starts with "…" (see `maxParents`).
 
