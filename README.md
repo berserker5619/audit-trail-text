@@ -4,6 +4,8 @@ Give it two versions of a record and its JSON Schema, and it tells you what chan
 
 - Pure functions with zero dependencies, for Node (18 and later) and the browser.
 - Nested objects, lists of plain values, and lists of objects matched by key.
+- Trees of any depth, such as a bill of materials, with items moved from one parent to another.
+- Labels in every language: a change keeps them all, and is read in the reader's.
 - Sensitive fields are reported without their values.
 - Changes are plain JSON your app can store, and describe later in any wording or language.
 
@@ -91,7 +93,10 @@ Key an item by what never changes for it, such as an id. A changed key reads as 
 | `writeOnly: true` or `x-sensitive: true` | Values never stored or shown: "Password changed" |
 | `x-key` on an array | Field, or array of fields, that identifies an item |
 | `x-label` on an array | Item name template: `"{firstName} {lastName}"`. Default: the key value |
-| `$ref` to `#/$defs/…` | Followed. External and recursive refs are refused with `INVALID_SCHEMA` |
+| `x-key-scope: "tree"` on an array | A key names one item across every list of the same definition, so a move between parents reads as one move. Default `"list"` |
+| `x-atomic: true` on an object | Compared and shown as one value, such as a chosen option: by `x-key`, named by `x-label` |
+| `x-title`, `x-itemNoun` | A title, or a list's item noun, as text or a language map: `{ "en": "Status", "de": "Status" }`. Wins over `title` |
+| `$ref` to `#/$defs/…` | Followed, also back into a definition it sits in, so a part can contain parts. External refs, and loops that never reach a property or item, are refused with `INVALID_SCHEMA` |
 | `allOf` | Merged: keywords on the field itself win, then each entry in order; `properties` are combined |
 | `patternProperties`, `additionalProperties` | Map entries, such as `{ "en": "Rose", "ta": "ரோஜா" }`: each key not in `properties` uses the first matching pattern's schema, else `additionalProperties`, and is labelled with the key as written |
 
@@ -99,7 +104,7 @@ Fields the schema doesn't describe are still reported, after the schema's fields
 
 ## The labels file
 
-When you can't or don't want to put labels in the schema, pass them separately. Entries always win over the schema. Keys are record paths with `*` for list items, followed by `#key`, `#label` or `=value` where needed.
+When you can't or don't want to put labels in the schema, pass them separately. Entries always win over the schema. Keys are record paths with `*` for list items, followed by `#key`, `#label`, `#atomic`, `#scope` or `=value` where needed. A key starting with `$defs/`, such as `"$defs/part/qty"` or `"$defs/partList#key"`, applies wherever that definition is used; a path entry still wins at its own place. Titles, item nouns, the record noun and value labels may be language maps: `"/status": { "en": "Status", "de": "Status" }`.
 
 ```ts
 const plainSchema = {
@@ -164,6 +169,7 @@ describeChanges({ zohoId: 'Z-1' }, { zohoId: 'Z-2' }, zoho)[0].text;
 | `ITEM_ADDED` | List item with no match in `before` | Order "Green dupatta" added to Orders |
 | `ITEM_REMOVED` | List item with no match in `after` | Order "Red saree" removed from Orders |
 | `LIST_REORDERED` | The relative order of matched items changed | Orders reordered |
+| `ITEM_MOVED` | With `x-key-scope: "tree"`, an item now under another parent | Part "Cuff" moved from Sleeve to Collar |
 | `RECORD_CREATED` | `before` is `null` | Contact created |
 | `RECORD_DELETED` | `after` is `null` | Contact deleted |
 | `TRUNCATED` | `maxChanges` reached | More changes not shown |
@@ -211,7 +217,8 @@ const diffOptions = {
   ignore: ['/updatedAt', '/orders/*/syncedAt'], // never reported, and stripped from stored values
   maxChanges: 200,      // default 1,000; past it, the walk stops and adds one TRUNCATED
   expandObjects: false, // true lists the fields of an object that appears, instead of "Address added"
-  maxDepth: 32,         // deeper records throw TOO_DEEP
+  maxDepth: 32,         // deeper records throw TOO_DEEP; raise it for deep trees
+  fallbackLanguage: 'en', // the language labels are stored in, from language maps
 };
 
 diffRecords({ name: 'R', updatedAt: '1' }, { name: 'R', updatedAt: '2' }, adapter, diffOptions).length;
@@ -237,14 +244,14 @@ Errors are `DiffError` with a stable `code` and a `path`:
 
 | Code | From | When |
 | --- | --- | --- |
-| `INVALID_SCHEMA` | adapter | A schema it can't read: an external or recursive `$ref`, an invalid pattern |
+| `INVALID_SCHEMA` | adapter | A schema it can't read: an external `$ref`, a `$ref` loop that describes no data, an invalid pattern, `x-atomic` on a schema that isn't an object |
 | `LIST_KEY_MISSING` | adapter | A list of objects with no `x-key` or `#key` |
 | `KEY_NOT_IN_SCHEMA` | adapter | A key field the item schema doesn't have |
 | `SENSITIVE_KEY` | adapter | A key or item label that uses a sensitive field |
 | `UNKNOWN_LABEL` | adapter | With `strictLabels`, a labels file entry that matches no field |
 | `ITEM_KEY_MISSING` | `diffRecords` | An item without its key, or with a key of `null` or `""` |
 | `INVALID_KEY` | `diffRecords` | A key that is an object or an array; keys are strings, numbers or booleans |
-| `DUPLICATE_KEY` | `diffRecords` | Two items in one list with the same key |
+| `DUPLICATE_KEY` | `diffRecords` | Two items in one list with the same key, or with tree scope, in one tree; `paths` has both |
 | `INVALID_RECORD` | `diffRecords` | A record that is not a plain object or `null` |
 | `TOO_DEEP` | `diffRecords` | A record nested deeper than `maxDepth` |
 | `NOT_JSON` | `diffRecords` | Functions, `Date` objects, `NaN`, cycles: convert dates to strings first |
@@ -292,7 +299,7 @@ Values are formatted with `Intl` for `locale` (default `en`) and `timeZone` (def
 
 ## Wording and translation
 
-The package ships English templates. `messages` replaces any of them, which is also how you add a language. Templates are strings with tokens `{field}`, `{parents}`, `{before}`, `{after}`, `{item}`, `{itemNoun}`, `{list}` and `{record}`:
+The package ships English templates. `messages` replaces any of them, which is also how you add a language. Templates are strings with tokens `{field}`, `{parents}`, `{before}`, `{after}`, `{item}`, `{itemNoun}`, `{list}`, `{record}`, and `{from}` and `{to}` for `ITEM_MOVED`:
 
 ```ts
 describe(JSON.parse(stored), { messages: { FIELD_CHANGED: '{field}: {before} → {after}' } })[0].text;
@@ -318,7 +325,98 @@ describe(JSON.parse(stored), { locale: 'fr-FR', messages: fr, translateLabel: (l
 //    "Commande « Red saree » retirée de Commandes"]
 ```
 
-`translateLabel(label, { kind, schemaPath })` translates your own words: field and list titles, item nouns and the record noun, with `kind` set to `field`, `list`, `itemNoun` or `record`. Item names such as "Blue kurta" are data and never go through it. Value labels such as "Active customer" come from the schema, so translate them with a translated schema or labels file. The package never ships translations of an app's own words.
+`translateLabel(label, { kind, schemaPath })` translates your own words: field and list titles, item nouns and the record noun, with `kind` set to `field`, `list`, `itemNoun` or `record`. Item names such as "Blue kurta" are data and never go through it, and neither do labels stored with a language map, which are already in the reader's language (see below). Value labels such as "Active customer" come from the schema, so translate them with language maps, or a translated schema or labels file. The package never ships translations of an app's own words.
+
+## Labels in every language
+
+Any title, item noun, value label or record noun can be a language map. A change keeps every language, and `describe` picks one when it writes the sentence, so the same stored history reads in German for a German user:
+
+```ts
+const intl = jsonSchemaAdapter({
+  type: 'object',
+  properties: {
+    stage: {
+      type: 'string',
+      'x-title': { en: 'Stage', de: 'Phase' },
+      oneOf: [
+        { const: 'open', title: 'Open', 'x-title': { en: 'Open', de: 'Offen' } },
+        { const: 'won', title: 'Won', 'x-title': { en: 'Won', de: 'Gewonnen' } },
+      ],
+    },
+  },
+});
+const stageChanges = diffRecords({ stage: 'open' }, { stage: 'won' }, intl);
+
+describe(stageChanges, { locale: 'de-DE', messages: { FIELD_CHANGED: '{field} von {before} zu {after} geändert' } })[0].text;
+// → "Phase von Offen zu Gewonnen geändert"
+
+[stageChanges[0].labels, stageChanges[0].display.afterLabel, stageChanges[0].display.i18n.afterLabel];
+// → [["Stage"], "Won", {"en": "Won", "de": "Gewonnen"}]
+```
+
+`labels` and the labels in `display` stay plain strings, in the `diffRecords` option `fallbackLanguage` (default `en`), so code that reads them sees no difference. The maps travel in `display.i18n`. `describe` reads a map in `language` (default: the language part of `locale`), trying the exact language (`de-CH`), its base (`de`), its own `fallbackLanguage` (default `en`), then the map's first language; keys starting with `$` are never languages. A change without `display.i18n` is read with its stored labels as they are.
+
+Sentence templates are still English: pass `messages` for another language. Item names taken from your data are never translated.
+
+## Objects as one value
+
+Some objects are one value, not a set of fields: a chosen option, an amount with its currency, a linked record. `x-atomic: true` compares and reports such an object as one value. `x-key` names the fields that decide equality, and `x-label` names it: a template such as `"{amount} {currency}"`, or `"@lang"` for an object that is itself a language map:
+
+```ts
+const options = jsonSchemaAdapter({
+  type: 'object',
+  properties: {
+    status: { title: 'Status', type: 'object', 'x-atomic': true, 'x-key': '$key', 'x-label': '@lang' },
+  },
+});
+
+describeChanges({ status: { $key: 'lead', en: 'Lead' } }, { status: { $key: 'active', en: 'Active' } }, options)[0].text;
+// → "Status changed from Lead to Active"
+
+diffRecords({ status: { $key: 'active', en: 'Active' } }, { status: { $key: 'active', en: 'Enabled' } }, options).length;
+// → 0
+```
+
+The second edit is no change: the key is the same, and only the option was renamed. When either side lacks the key, the whole objects are compared. A list of atomic values, such as a multi-select, is matched by key: "VIP added to Tags". `"/status#atomic": "$key"` in the labels file does the same for a schema you don't control. The raw objects are stored in `before` and `after`, without sensitive and ignored fields; sentences never print them.
+
+## Trees
+
+A `$ref` may point back to a definition it sits inside, so a part can contain parts to any depth. Inside a tree, a nested list adds no title of its own, so paths read "Parts › Body › Sleeve", and every level shares one `schemaPath`, such as `/$defs/part/properties/qty`.
+
+With `x-key-scope: "tree"`, a key names one item across every list of the same definition, and an item that changes parent is one `ITEM_MOVED`, followed by its own field changes at the new place:
+
+```ts
+const bom = jsonSchemaAdapter({
+  type: 'object',
+  properties: { parts: { $ref: '#/$defs/partList' } },
+  $defs: {
+    partList: { title: 'Parts', type: 'array', 'x-key': 'id', 'x-key-scope': 'tree', items: { $ref: '#/$defs/part' } },
+    part: {
+      title: 'Part',
+      type: 'object',
+      properties: { id: { type: 'string' }, qty: { type: 'integer', title: 'Quantity' }, parts: { $ref: '#/$defs/partList' } },
+    },
+  },
+});
+
+describeChanges(
+  { parts: [{ id: 'Body', parts: [{ id: 'Sleeve', parts: [{ id: 'Cuff', qty: 2 }] }, { id: 'Collar' }] }] },
+  { parts: [{ id: 'Body', parts: [{ id: 'Sleeve' }, { id: 'Collar', parts: [{ id: 'Cuff', qty: 3 }] }] }] },
+  bom,
+).map((s) => s.text);
+// → ["Part \"Cuff\" moved from Sleeve to Collar",
+//    "Parts › Body › Collar › Cuff: Quantity changed from 2 to 3"]
+```
+
+- An item is moved when its parent differs between the two versions. A child that stays under its moving parent is not moved; one that leaves for another parent in the same edit gets its own `ITEM_MOVED`.
+- A moved item is named as it is after the edit. A rename shows as its own change.
+- `{from}` and `{to}` name each parent by as many trailing labels as tell them apart: "from Shirt › Sleeve to Jacket › Sleeve".
+- A key used twice in one tree throws `DUPLICATE_KEY` with both `paths`. Without tree scope, the same key under two parents is allowed, and a move reads as a remove and an add, as in 1.1.
+- Only lists of the same definition form a tree: a line moved from an order to a quote is a remove and an add.
+
+Sentences name at most `maxParents` enclosing items (default 3): "… › Sleeve › Cuff › Button: Quantity changed from 1 to 2". `labels` always holds the full path; pass `maxParents: Infinity` for whole paths.
+
+The data decides the depth, up to `maxDepth` (default 32): raise it for deep trees. The walk uses no recursion, so a raised `maxDepth` can't overflow the stack. `JSON.stringify` itself fails on values nested a few thousand levels deep, so for very deep trees, store changes with a serializer that handles that depth.
 
 ## Rendering
 

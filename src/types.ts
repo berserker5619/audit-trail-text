@@ -5,6 +5,7 @@ export type ChangeCode =
   | 'ITEM_ADDED'
   | 'ITEM_REMOVED'
   | 'LIST_REORDERED'
+  | 'ITEM_MOVED'
   | 'RECORD_CREATED'
   | 'RECORD_DELETED'
   | 'TRUNCATED';
@@ -48,10 +49,33 @@ export interface ChangeDisplay {
   itemLabels?: number[];
   /** LIST_REORDERED: how many items moved; `before` and `after` hold at most 100 of their keys. */
   moved?: number;
+  /** ITEM_MOVED: the labels of the place the item left, ending with its parent. */
+  fromParent?: string[];
+  /** ITEM_MOVED: the labels of the place the item went to: `labels` without the item's name. */
+  toParent?: string[];
+  /** Positions in `fromParent` that hold item names. */
+  fromItemLabels?: number[];
+  /** Labels in every language, where the schema or labels file gave a language map. */
+  i18n?: ChangeI18n;
+}
+
+/** A label in several languages: `{ "en": "Status", "de": "Status" }`. Keys starting with `$` are not languages. */
+export type LangMap = Record<string, string>;
+
+export interface ChangeI18n {
+  /** Same positions as `labels`; null where the label was a plain string. */
+  labels?: (LangMap | null)[];
+  beforeLabel?: LangMap;
+  afterLabel?: LangMap;
+  itemNoun?: LangMap;
+  /** Same positions as `fromParent`. */
+  fromParent?: (LangMap | null)[];
 }
 
 interface NodeBase {
   title: string;
+  /** The title in every language, from `x-title` or a labels file map; `title` is its fallback text. */
+  titleI18n?: LangMap;
   schemaPath: string;
   /** Marked sensitive here or by a parent. */
   sensitive: boolean;
@@ -67,6 +91,19 @@ export interface ValueNode extends NodeBase {
   valueLabels: ReadonlyMap<string, string>;
   /** Stored codes (`enum`, `oneOf` or labels file values): shown by label or as the code, never quoted. */
   coded?: true;
+  /** Value labels in every language, by stored value. */
+  valueLabelsI18n?: ReadonlyMap<string, LangMap>;
+  /** An object compared and shown as one value (`x-atomic`). */
+  atomic?: AtomicSpec;
+}
+
+export interface AtomicSpec {
+  /** Fields that decide equality. When either side lacks one, the whole objects are compared. */
+  key: readonly string[];
+  /** Label template such as "{amount} {currency}", or "@lang" for an object that is a language map. */
+  label?: string;
+  /** Fields marked sensitive in its schema: never stored, and not compared. */
+  sensitive?: readonly string[];
 }
 
 export interface ObjectNode extends NodeBase {
@@ -87,6 +124,11 @@ export interface PatternEntry {
 export interface ObjectListNode extends NodeBase {
   kind: 'objectList';
   itemNoun: string;
+  itemNounI18n?: LangMap;
+  /** The `$ref` of a recursive list definition: lists with the same `def` are one tree. */
+  def?: string;
+  /** "tree": a key names one item across every list with the same `def` (or this list's schemaPath). */
+  keyScope?: 'list' | 'tree';
   /** Fields that identify an item, in key order. */
   key: readonly string[];
   /** Item name template, such as "{product}". */
@@ -97,6 +139,7 @@ export interface ObjectListNode extends NodeBase {
 export interface ValueListNode extends NodeBase {
   kind: 'valueList';
   itemNoun: string;
+  itemNounI18n?: LangMap;
   item: FieldNode;
 }
 
@@ -106,6 +149,8 @@ export type FieldNode = ValueNode | ObjectNode | ObjectListNode | ValueListNode;
 export interface Adapter {
   /** Record noun, such as "Contact". */
   recordNoun: string;
+  /** The record noun in every language. */
+  recordNounI18n?: LangMap;
   root: ObjectNode;
   /** Labels file entries that matched no field, such as typos. */
   unusedLabels?: readonly string[];
@@ -120,4 +165,6 @@ export interface DiffOptions {
   expandObjects?: boolean;
   /** Default 32. Deeper records throw TOO_DEEP. */
   maxDepth?: number;
+  /** Default "en". The language that language-map labels are resolved in for `labels` and `display`. */
+  fallbackLanguage?: string;
 }

@@ -1,0 +1,2173 @@
+{
+ "version": "1.0.1",
+ "note": "Stored by audit-trail-text 1.0.1, generated from the 1.0.1 tag.",
+ "cases": [
+  {
+   "name": "fixture crm-contact.json",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/phone",
+     "afterPath": "/phone",
+     "schemaPath": "/properties/phone",
+     "labels": [
+      "Phone"
+     ],
+     "before": "98400 11111",
+     "after": "98400 22222",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_SET",
+     "beforePath": "/email",
+     "afterPath": "/email",
+     "schemaPath": "/properties/email",
+     "labels": [
+      "Email"
+     ],
+     "after": "r.kumar@example.com",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/status",
+     "afterPath": "/status",
+     "schemaPath": "/properties/status",
+     "labels": [
+      "Status"
+     ],
+     "before": "lead",
+     "after": "active",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Lead",
+      "afterLabel": "Active customer"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/password",
+     "afterPath": "/password",
+     "schemaPath": "/properties/password",
+     "labels": [
+      "Password"
+     ],
+     "display": {
+      "type": "string"
+     },
+     "redacted": true,
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/primaryAddress/pin",
+     "afterPath": "/primaryAddress/pin",
+     "schemaPath": "/properties/primaryAddress/properties/pin",
+     "labels": [
+      "Primary Address",
+      "PIN"
+     ],
+     "before": "600001",
+     "after": "600002",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/tags/0",
+     "schemaPath": "/properties/tags/items",
+     "labels": [
+      "Tags"
+     ],
+     "before": "retail",
+     "display": {
+      "type": "string",
+      "itemNoun": "Tag"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/tags/1",
+     "schemaPath": "/properties/tags/items",
+     "labels": [
+      "Tags"
+     ],
+     "after": "wholesale",
+     "display": {
+      "type": "string",
+      "itemNoun": "Tag"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/orders/0/qty",
+     "afterPath": "/orders/1/qty",
+     "schemaPath": "/properties/orders/items/properties/qty",
+     "labels": [
+      "Orders",
+      "Blue kurta",
+      "Quantity"
+     ],
+     "before": 2,
+     "after": 3,
+     "item": {
+      "key": "A1",
+      "label": "Blue kurta"
+     },
+     "display": {
+      "type": "integer",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/orders/1",
+     "schemaPath": "/properties/orders/items",
+     "labels": [
+      "Orders",
+      "Red saree"
+     ],
+     "before": {
+      "id": "A2",
+      "product": "Red saree",
+      "qty": 1
+     },
+     "item": {
+      "key": "A2",
+      "label": "Red saree"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Order",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/orders/0",
+     "schemaPath": "/properties/orders/items",
+     "labels": [
+      "Orders",
+      "Green dupatta"
+     ],
+     "after": {
+      "id": "A3",
+      "product": "Green dupatta",
+      "qty": 1
+     },
+     "item": {
+      "key": "A3",
+      "label": "Green dupatta"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Order",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/legacyId",
+     "afterPath": "/legacyId",
+     "labels": [
+      "Legacy Id"
+     ],
+     "before": 17,
+     "after": 18,
+     "display": {},
+     "inSchema": false
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Phone changed from \"98400 11111\" to \"98400 22222\"",
+     "Email set to \"r.kumar@example.com\"",
+     "Status changed from Lead to Active customer",
+     "Password changed",
+     "Primary Address: PIN changed from \"600001\" to \"600002\"",
+     "\"retail\" removed from Tags",
+     "\"wholesale\" added to Tags",
+     "Orders › Blue kurta: Quantity changed from 2 to 3",
+     "Order \"Red saree\" removed from Orders",
+     "Order \"Green dupatta\" added to Orders",
+     "Legacy Id changed from 17 to 18"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Phone changed from \"98400 11111\" to \"98400 22222\"",
+     "Email set to \"r.kumar@example.com\"",
+     "Status changed from Lead to Active customer",
+     "Password changed",
+     "Primary Address: PIN changed from \"600001\" to \"600002\"",
+     "\"retail\" removed from Tags",
+     "\"wholesale\" added to Tags",
+     "Orders › Blue kurta: Quantity changed from 2 to 3",
+     "Order \"Red saree\" removed from Orders",
+     "Order \"Green dupatta\" added to Orders",
+     "Legacy Id changed from 17 to 18"
+    ]
+   }
+  },
+  {
+   "name": "fixture plm-style.json",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/season",
+     "afterPath": "/season",
+     "schemaPath": "/properties/season",
+     "labels": [
+      "Season"
+     ],
+     "before": "SS27",
+     "after": "AW27",
+     "display": {
+      "type": "string",
+      "beforeLabel": "SS27",
+      "afterLabel": "AW27"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/fabric/composition",
+     "afterPath": "/fabric/composition",
+     "schemaPath": "/properties/fabric/properties/composition",
+     "labels": [
+      "Fabric",
+      "Composition"
+     ],
+     "before": "100% cotton",
+     "after": "95% cotton, 5% elastane",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/costing/fob",
+     "afterPath": "/costing/fob",
+     "schemaPath": "/properties/costing/properties/fob",
+     "labels": [
+      "Costing",
+      "Fob"
+     ],
+     "display": {
+      "type": "number"
+     },
+     "redacted": true,
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/colourways/0/sizes/0",
+     "schemaPath": "/properties/colourways/items/properties/sizes/items",
+     "labels": [
+      "Colourways",
+      "Red",
+      "Sizes",
+      "M, Slim"
+     ],
+     "after": {
+      "size": "M",
+      "fit": "Slim",
+      "qty": 40
+     },
+     "item": {
+      "key": [
+       "M",
+       "Slim"
+      ],
+      "label": "M, Slim"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Size",
+      "itemLabels": [
+       1,
+       3
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/colourways/0/sizes/0/qty",
+     "afterPath": "/colourways/1/sizes/0/qty",
+     "schemaPath": "/properties/colourways/items/properties/sizes/items/properties/qty",
+     "labels": [
+      "Colourways",
+      "Navy",
+      "Sizes",
+      "M, Regular",
+      "Quantity"
+     ],
+     "before": 100,
+     "after": 120,
+     "item": {
+      "key": [
+       "M",
+       "Regular"
+      ],
+      "label": "M, Regular"
+     },
+     "display": {
+      "type": "integer",
+      "itemLabels": [
+       1,
+       3
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "LIST_REORDERED",
+     "beforePath": "/colourways",
+     "afterPath": "/colourways",
+     "schemaPath": "/properties/colourways",
+     "labels": [
+      "Colourways"
+     ],
+     "before": [
+      "NVY",
+      "RED"
+     ],
+     "after": [
+      "RED",
+      "NVY"
+     ],
+     "display": {
+      "type": "array",
+      "itemNoun": "Colourway"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CLEARED",
+     "beforePath": "/launchDate",
+     "afterPath": "/launchDate",
+     "schemaPath": "/properties/launchDate",
+     "labels": [
+      "Launch Date"
+     ],
+     "before": "2026-10-05",
+     "after": null,
+     "display": {
+      "type": "string",
+      "format": "date"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Season changed from SS27 to AW27",
+     "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+     "Costing: Fob changed",
+     "Colourways › Red: Size \"M, Slim\" added to Sizes",
+     "Colourways › Navy › Sizes › M, Regular: Quantity changed from 100 to 120",
+     "Colourways reordered",
+     "Launch Date cleared (was Oct 5, 2026)"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Season changed from SS27 to AW27",
+     "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+     "Costing: Fob changed",
+     "Colourways › Red: Size \"M, Slim\" added to Sizes",
+     "Colourways › Navy › Sizes › M, Regular: Quantity changed from 100 to 120",
+     "Colourways reordered",
+     "Launch Date cleared (was 5 Oct 2026)"
+    ]
+   }
+  },
+  {
+   "name": "crm contact details edited",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/email",
+     "afterPath": "/email",
+     "schemaPath": "/properties/email",
+     "labels": [
+      "Email"
+     ],
+     "before": "rajesh.k@example.com",
+     "after": "rajesh@kumartextiles.in",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/phone",
+     "afterPath": "/phone",
+     "schemaPath": "/properties/phone",
+     "labels": [
+      "Mobile"
+     ],
+     "before": "98400 11111",
+     "after": "98400 22222",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Email changed from \"rajesh.k@example.com\" to \"rajesh@kumartextiles.in\"",
+     "Mobile changed from \"98400 11111\" to \"98400 22222\""
+    ],
+    "en-IN Asia/Kolkata": [
+     "Email changed from \"rajesh.k@example.com\" to \"rajesh@kumartextiles.in\"",
+     "Mobile changed from \"98400 11111\" to \"98400 22222\""
+    ]
+   }
+  },
+  {
+   "name": "crm qualified and reassigned",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/status",
+     "afterPath": "/status",
+     "schemaPath": "/properties/status",
+     "labels": [
+      "Status"
+     ],
+     "before": "lead",
+     "after": "qualified",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Lead",
+      "afterLabel": "Qualified lead"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/owner",
+     "afterPath": "/owner",
+     "schemaPath": "/properties/owner",
+     "labels": [
+      "Account owner"
+     ],
+     "before": "Priya",
+     "after": "Arun",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/source",
+     "afterPath": "/source",
+     "schemaPath": "/properties/source",
+     "labels": [
+      "Source"
+     ],
+     "before": "walk-in",
+     "after": "referral",
+     "display": {
+      "type": "string",
+      "beforeLabel": "walk-in",
+      "afterLabel": "referral"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Status changed from Lead to Qualified lead",
+     "Account owner changed from \"Priya\" to \"Arun\"",
+     "Source changed from walk-in to referral"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Status changed from Lead to Qualified lead",
+     "Account owner changed from \"Priya\" to \"Arun\"",
+     "Source changed from walk-in to referral"
+    ]
+   }
+  },
+  {
+   "name": "crm tags edited",
+   "changes": [
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/tags/0",
+     "schemaPath": "/properties/tags/items",
+     "labels": [
+      "Tags"
+     ],
+     "before": "wholesale",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Wholesale",
+      "itemNoun": "Tag"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/tags/0",
+     "schemaPath": "/properties/tags/items",
+     "labels": [
+      "Tags"
+     ],
+     "after": "vip",
+     "display": {
+      "type": "string",
+      "afterLabel": "VIP",
+      "itemNoun": "Tag"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Wholesale removed from Tags",
+     "VIP added to Tags"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Wholesale removed from Tags",
+     "VIP added to Tags"
+    ]
+   }
+  },
+  {
+   "name": "crm work address added, home PIN fixed",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/addresses/0/pin",
+     "afterPath": "/addresses/0/pin",
+     "schemaPath": "/properties/addresses/items/properties/pin",
+     "labels": [
+      "Addresses",
+      "Home",
+      "PIN code"
+     ],
+     "before": "600017",
+     "after": "600018",
+     "item": {
+      "key": "home",
+      "label": "Home"
+     },
+     "display": {
+      "type": "string",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/addresses/1",
+     "schemaPath": "/properties/addresses/items",
+     "labels": [
+      "Addresses",
+      "Work"
+     ],
+     "after": {
+      "kind": "work",
+      "line1": "4 Mount Road",
+      "city": "Chennai",
+      "pin": "600002"
+     },
+     "item": {
+      "key": "work",
+      "label": "Work"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Address",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Addresses › Home: PIN code changed from \"600017\" to \"600018\"",
+     "Address \"Work\" added to Addresses"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Addresses › Home: PIN code changed from \"600017\" to \"600018\"",
+     "Address \"Work\" added to Addresses"
+    ]
+   }
+  },
+  {
+   "name": "crm home address removed",
+   "changes": [
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/addresses/0",
+     "schemaPath": "/properties/addresses/items",
+     "labels": [
+      "Addresses",
+      "Home"
+     ],
+     "before": {
+      "kind": "home",
+      "line1": "12 Gandhi Road",
+      "city": "Chennai",
+      "pin": "600017"
+     },
+     "item": {
+      "key": "home",
+      "label": "Home"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Address",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Address \"Home\" removed from Addresses"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Address \"Home\" removed from Addresses"
+    ]
+   }
+  },
+  {
+   "name": "crm notes reordered and one edited",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/notes/1/body",
+     "afterPath": "/notes/0/body",
+     "schemaPath": "/properties/notes/items/properties/body",
+     "labels": [
+      "Notes",
+      "Follow-up call",
+      "Body"
+     ],
+     "before": "Wants samples",
+     "after": "Wants samples by Friday",
+     "item": {
+      "key": "n2",
+      "label": "Follow-up call"
+     },
+     "display": {
+      "type": "string",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "LIST_REORDERED",
+     "beforePath": "/notes",
+     "afterPath": "/notes",
+     "schemaPath": "/properties/notes",
+     "labels": [
+      "Notes"
+     ],
+     "before": [
+      "n1",
+      "n2"
+     ],
+     "after": [
+      "n2",
+      "n1"
+     ],
+     "display": {
+      "type": "array",
+      "itemNoun": "Note"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Notes › Follow-up call: Body changed from \"Wants samples\" to \"Wants samples by Friday\"",
+     "Notes reordered"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Notes › Follow-up call: Body changed from \"Wants samples\" to \"Wants samples by Friday\"",
+     "Notes reordered"
+    ]
+   }
+  },
+  {
+   "name": "crm PAN corrected and password set",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/panNumber",
+     "afterPath": "/panNumber",
+     "schemaPath": "/properties/panNumber",
+     "labels": [
+      "PAN"
+     ],
+     "display": {
+      "type": "string"
+     },
+     "redacted": true,
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_SET",
+     "beforePath": "/password",
+     "afterPath": "/password",
+     "schemaPath": "/properties/password",
+     "labels": [
+      "Password"
+     ],
+     "display": {
+      "type": "string"
+     },
+     "redacted": true,
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "PAN changed",
+     "Password set"
+    ],
+    "en-IN Asia/Kolkata": [
+     "PAN changed",
+     "Password set"
+    ]
+   }
+  },
+  {
+   "name": "crm dates",
+   "changes": [
+    {
+     "code": "FIELD_SET",
+     "beforePath": "/dateOfBirth",
+     "afterPath": "/dateOfBirth",
+     "schemaPath": "/properties/dateOfBirth",
+     "labels": [
+      "Date of birth"
+     ],
+     "after": "1988-03-14",
+     "display": {
+      "type": "string",
+      "format": "date"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/lastContactedAt",
+     "afterPath": "/lastContactedAt",
+     "schemaPath": "/properties/lastContactedAt",
+     "labels": [
+      "Last contacted"
+     ],
+     "before": "2026-10-01T09:30:00Z",
+     "after": "2026-10-21T14:05:00Z",
+     "display": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Date of birth set to Mar 14, 1988",
+     "Last contacted changed from Oct 1, 2026, 9:30 AM to Oct 21, 2026, 2:05 PM"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Date of birth set to 14 Mar 1988",
+     "Last contacted changed from 1 Oct 2026, 3:00 pm to 21 Oct 2026, 7:35 pm"
+    ]
+   }
+  },
+  {
+   "name": "crm credit and opt-in",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/whatsappOptIn",
+     "afterPath": "/whatsappOptIn",
+     "schemaPath": "/properties/whatsappOptIn",
+     "labels": [
+      "WhatsApp opt-in"
+     ],
+     "before": false,
+     "after": true,
+     "display": {
+      "type": "boolean"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/creditLimit",
+     "afterPath": "/creditLimit",
+     "schemaPath": "/properties/creditLimit",
+     "labels": [
+      "Credit limit"
+     ],
+     "before": 50000,
+     "after": 125000,
+     "display": {
+      "type": "number"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "WhatsApp opt-in changed from No to Yes",
+     "Credit limit changed from 50,000 to 125,000"
+    ],
+    "en-IN Asia/Kolkata": [
+     "WhatsApp opt-in changed from No to Yes",
+     "Credit limit changed from 50,000 to 1,25,000"
+    ]
+   }
+  },
+  {
+   "name": "crm company added, last name cleared",
+   "changes": [
+    {
+     "code": "FIELD_CLEARED",
+     "beforePath": "/lastName",
+     "afterPath": "/lastName",
+     "schemaPath": "/properties/lastName",
+     "labels": [
+      "Last name"
+     ],
+     "before": "Kumar",
+     "after": "",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_SET",
+     "beforePath": "/company",
+     "afterPath": "/company",
+     "schemaPath": "/properties/company",
+     "labels": [
+      "Company"
+     ],
+     "after": {
+      "name": "Kumar Textiles",
+      "gstin": "33ABCDE1234F1Z5"
+     },
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Last name cleared (was \"Kumar\")",
+     "Company added"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Last name cleared (was \"Kumar\")",
+     "Company added"
+    ]
+   }
+  },
+  {
+   "name": "crm field from an integration",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/zohoId",
+     "afterPath": "/zohoId",
+     "labels": [
+      "Zoho Id"
+     ],
+     "before": "Z-1",
+     "after": "Z-2",
+     "display": {},
+     "inSchema": false
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Zoho Id changed from \"Z-1\" to \"Z-2\""
+    ],
+    "en-IN Asia/Kolkata": [
+     "Zoho Id changed from \"Z-1\" to \"Z-2\""
+    ]
+   }
+  },
+  {
+   "name": "crm only updatedAt changed",
+   "changes": [],
+   "sentences": {
+    "default": [],
+    "en-IN Asia/Kolkata": []
+   }
+  },
+  {
+   "name": "crm contact created",
+   "changes": [
+    {
+     "code": "RECORD_CREATED",
+     "afterPath": "",
+     "schemaPath": "",
+     "labels": [
+      "Contact"
+     ],
+     "after": {
+      "firstName": "Rajesh",
+      "lastName": "Kumar",
+      "email": "rajesh.k@example.com",
+      "phone": "98400 11111",
+      "whatsappOptIn": false,
+      "status": "lead",
+      "owner": "Priya",
+      "source": "walk-in",
+      "creditLimit": 50000,
+      "tags": [
+       "wholesale"
+      ],
+      "addresses": [
+       {
+        "kind": "home",
+        "line1": "12 Gandhi Road",
+        "city": "Chennai",
+        "pin": "600017"
+       }
+      ],
+      "notes": [
+       {
+        "id": "n1",
+        "title": "First visit",
+        "body": "Asked about bulk pricing"
+       },
+       {
+        "id": "n2",
+        "title": "Follow-up call",
+        "body": "Wants samples"
+       }
+      ],
+      "lastContactedAt": "2026-10-01T09:30:00Z"
+     },
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Contact created"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Contact created"
+    ]
+   }
+  },
+  {
+   "name": "crm contact deleted",
+   "changes": [
+    {
+     "code": "RECORD_DELETED",
+     "beforePath": "",
+     "schemaPath": "",
+     "labels": [
+      "Contact"
+     ],
+     "before": {
+      "firstName": "Rajesh",
+      "lastName": "Kumar",
+      "email": "rajesh.k@example.com",
+      "phone": "98400 11111",
+      "whatsappOptIn": false,
+      "status": "lead",
+      "owner": "Priya",
+      "source": "walk-in",
+      "creditLimit": 50000,
+      "tags": [
+       "wholesale"
+      ],
+      "addresses": [
+       {
+        "kind": "home",
+        "line1": "12 Gandhi Road",
+        "city": "Chennai",
+        "pin": "600017"
+       }
+      ],
+      "notes": [
+       {
+        "id": "n1",
+        "title": "First visit",
+        "body": "Asked about bulk pricing"
+       },
+       {
+        "id": "n2",
+        "title": "Follow-up call",
+        "body": "Wants samples"
+       }
+      ],
+      "lastContactedAt": "2026-10-01T09:30:00Z"
+     },
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Contact deleted"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Contact deleted"
+    ]
+   }
+  },
+  {
+   "name": "plm approved for next season",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/season",
+     "afterPath": "/season",
+     "schemaPath": "/properties/season",
+     "labels": [
+      "Season"
+     ],
+     "before": "SS27",
+     "after": "AW27",
+     "display": {
+      "type": "string",
+      "beforeLabel": "SS27",
+      "afterLabel": "AW27"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/stage",
+     "afterPath": "/stage",
+     "schemaPath": "/properties/stage",
+     "labels": [
+      "Stage"
+     ],
+     "before": "proto",
+     "after": "approved",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Proto sample",
+      "afterLabel": "Approved for production"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Season changed from SS27 to AW27",
+     "Stage changed from Proto sample to Approved for production"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Season changed from SS27 to AW27",
+     "Stage changed from Proto sample to Approved for production"
+    ]
+   }
+  },
+  {
+   "name": "plm fabric changed",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/fabric/composition",
+     "afterPath": "/fabric/composition",
+     "schemaPath": "/properties/fabric/properties/composition",
+     "labels": [
+      "Fabric",
+      "Composition"
+     ],
+     "before": "100% cotton",
+     "after": "95% cotton, 5% elastane",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/fabric/gsm",
+     "afterPath": "/fabric/gsm",
+     "schemaPath": "/properties/fabric/properties/gsm",
+     "labels": [
+      "Fabric",
+      "GSM"
+     ],
+     "before": 140,
+     "after": 160,
+     "display": {
+      "type": "integer"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+     "Fabric: GSM changed from 140 to 160"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Fabric: Composition changed from \"100% cotton\" to \"95% cotton, 5% elastane\"",
+     "Fabric: GSM changed from 140 to 160"
+    ]
+   }
+  },
+  {
+   "name": "plm colourway added",
+   "changes": [
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/colourways/2",
+     "schemaPath": "/properties/colourways/items",
+     "labels": [
+      "Colourways",
+      "Mustard"
+     ],
+     "after": {
+      "code": "MST",
+      "name": "Mustard",
+      "pantone": "14-0952",
+      "sizes": []
+     },
+     "item": {
+      "key": "MST",
+      "label": "Mustard"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Colourway",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Colourway \"Mustard\" added to Colourways"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Colourway \"Mustard\" added to Colourways"
+    ]
+   }
+  },
+  {
+   "name": "plm colourway dropped",
+   "changes": [
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/colourways/1",
+     "schemaPath": "/properties/colourways/items",
+     "labels": [
+      "Colourways",
+      "Rose"
+     ],
+     "before": {
+      "code": "ROS",
+      "name": "Rose",
+      "pantone": "15-1621",
+      "sizes": [
+       {
+        "size": "M",
+        "fit": "Regular",
+        "qty": 150
+       }
+      ]
+     },
+     "item": {
+      "key": "ROS",
+      "label": "Rose"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Colourway",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Colourway \"Rose\" removed from Colourways"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Colourway \"Rose\" removed from Colourways"
+    ]
+   }
+  },
+  {
+   "name": "plm colourways reordered",
+   "changes": [
+    {
+     "code": "LIST_REORDERED",
+     "beforePath": "/colourways",
+     "afterPath": "/colourways",
+     "schemaPath": "/properties/colourways",
+     "labels": [
+      "Colourways"
+     ],
+     "before": [
+      "NVY",
+      "ROS"
+     ],
+     "after": [
+      "ROS",
+      "NVY"
+     ],
+     "display": {
+      "type": "array",
+      "itemNoun": "Colourway"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Colourways reordered"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Colourways reordered"
+    ]
+   }
+  },
+  {
+   "name": "plm size added, quantity changed",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/colourways/0/sizes/1/qty",
+     "afterPath": "/colourways/0/sizes/1/qty",
+     "schemaPath": "/properties/colourways/items/properties/sizes/items/properties/qty",
+     "labels": [
+      "Colourways",
+      "Navy",
+      "Size breakdown",
+      "M, Regular",
+      "Quantity"
+     ],
+     "before": 300,
+     "after": 1250,
+     "item": {
+      "key": [
+       "M",
+       "Regular"
+      ],
+      "label": "M, Regular"
+     },
+     "display": {
+      "type": "integer",
+      "itemLabels": [
+       1,
+       3
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/colourways/1/sizes/1",
+     "schemaPath": "/properties/colourways/items/properties/sizes/items",
+     "labels": [
+      "Colourways",
+      "Rose",
+      "Size breakdown",
+      "L, Slim"
+     ],
+     "after": {
+      "size": "L",
+      "fit": "Slim",
+      "qty": 80
+     },
+     "item": {
+      "key": [
+       "L",
+       "Slim"
+      ],
+      "label": "L, Slim"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Size",
+      "itemLabels": [
+       1,
+       3
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Colourways › Navy › Size breakdown › M, Regular: Quantity changed from 300 to 1,250",
+     "Colourways › Rose: Size \"L, Slim\" added to Size breakdown"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Colourways › Navy › Size breakdown › M, Regular: Quantity changed from 300 to 1,250",
+     "Colourways › Rose: Size \"L, Slim\" added to Size breakdown"
+    ]
+   }
+  },
+  {
+   "name": "plm sizes reordered within a colourway",
+   "changes": [
+    {
+     "code": "LIST_REORDERED",
+     "beforePath": "/colourways/0/sizes",
+     "afterPath": "/colourways/0/sizes",
+     "schemaPath": "/properties/colourways/items/properties/sizes",
+     "labels": [
+      "Colourways",
+      "Navy",
+      "Size breakdown"
+     ],
+     "before": [
+      [
+       "S",
+       "Regular"
+      ],
+      [
+       "M",
+       "Regular"
+      ]
+     ],
+     "after": [
+      [
+       "M",
+       "Regular"
+      ],
+      [
+       "S",
+       "Regular"
+      ]
+     ],
+     "item": {
+      "key": "NVY",
+      "label": "Navy"
+     },
+     "display": {
+      "type": "array",
+      "itemNoun": "Size",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Colourways › Navy: Size breakdown reordered"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Colourways › Navy: Size breakdown reordered"
+    ]
+   }
+  },
+  {
+   "name": "plm BOM consumption changed, button supplier switched",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/bom/0/consumption",
+     "afterPath": "/bom/0/consumption",
+     "schemaPath": "/properties/bom/items/properties/consumption",
+     "labels": [
+      "Bill of materials",
+      "Shell fabric (Arvind)",
+      "Consumption"
+     ],
+     "before": 2.4,
+     "after": 2.55,
+     "item": {
+      "key": [
+       "Shell fabric",
+       "Arvind"
+      ],
+      "label": "Shell fabric (Arvind)"
+     },
+     "display": {
+      "type": "number",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/bom/1",
+     "schemaPath": "/properties/bom/items",
+     "labels": [
+      "Bill of materials",
+      "Button (YKK)"
+     ],
+     "before": {
+      "component": "Button",
+      "supplier": "YKK",
+      "consumption": 6,
+      "unit": "pcs"
+     },
+     "item": {
+      "key": [
+       "Button",
+       "YKK"
+      ],
+      "label": "Button (YKK)"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "BOM line",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/bom/1",
+     "schemaPath": "/properties/bom/items",
+     "labels": [
+      "Bill of materials",
+      "Button (Shingora)"
+     ],
+     "after": {
+      "component": "Button",
+      "supplier": "Shingora",
+      "consumption": 6,
+      "unit": "pcs"
+     },
+     "item": {
+      "key": [
+       "Button",
+       "Shingora"
+      ],
+      "label": "Button (Shingora)"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "BOM line",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Bill of materials › Shell fabric (Arvind): Consumption changed from 2.4 to 2.55",
+     "BOM line \"Button (YKK)\" removed from Bill of materials",
+     "BOM line \"Button (Shingora)\" added to Bill of materials"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Bill of materials › Shell fabric (Arvind): Consumption changed from 2.4 to 2.55",
+     "BOM line \"Button (YKK)\" removed from Bill of materials",
+     "BOM line \"Button (Shingora)\" added to Bill of materials"
+    ]
+   }
+  },
+  {
+   "name": "plm target FOB revised",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/targetFob",
+     "afterPath": "/targetFob",
+     "schemaPath": "/properties/targetFob",
+     "labels": [
+      "Target FOB (USD)"
+     ],
+     "display": {
+      "type": "number"
+     },
+     "redacted": true,
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Target FOB (USD) changed"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Target FOB (USD) changed"
+    ]
+   }
+  },
+  {
+   "name": "plm launch date moved",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/launchDate",
+     "afterPath": "/launchDate",
+     "schemaPath": "/properties/launchDate",
+     "labels": [
+      "Launch date"
+     ],
+     "before": "2027-02-15",
+     "after": "2027-03-01",
+     "display": {
+      "type": "string",
+      "format": "date"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Launch date changed from Feb 15, 2027 to Mar 1, 2027"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Launch date changed from 15 Feb 2027 to 1 Mar 2027"
+    ]
+   }
+  },
+  {
+   "name": "plm fabric cleared, pantone renamed",
+   "changes": [
+    {
+     "code": "FIELD_CLEARED",
+     "beforePath": "/fabric",
+     "afterPath": "/fabric",
+     "schemaPath": "/properties/fabric",
+     "labels": [
+      "Fabric"
+     ],
+     "before": {
+      "composition": "100% cotton",
+      "gsm": 140,
+      "mill": "Arvind"
+     },
+     "after": null,
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/colourways/1/pantone",
+     "afterPath": "/colourways/1/pantone",
+     "schemaPath": "/properties/colourways/items/properties/pantone",
+     "labels": [
+      "Colourways",
+      "Rose",
+      "Pantone"
+     ],
+     "before": "15-1621",
+     "after": "15-1626",
+     "item": {
+      "key": "ROS",
+      "label": "Rose"
+     },
+     "display": {
+      "type": "string",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Fabric removed",
+     "Colourways › Rose: Pantone changed from \"15-1621\" to \"15-1626\""
+    ],
+    "en-IN Asia/Kolkata": [
+     "Fabric removed",
+     "Colourways › Rose: Pantone changed from \"15-1621\" to \"15-1626\""
+    ]
+   }
+  },
+  {
+   "name": "plm style dropped",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/stage",
+     "afterPath": "/stage",
+     "schemaPath": "/properties/stage",
+     "labels": [
+      "Stage"
+     ],
+     "before": "proto",
+     "after": "dropped",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Proto sample",
+      "afterLabel": "Dropped"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CLEARED",
+     "beforePath": "/launchDate",
+     "afterPath": "/launchDate",
+     "schemaPath": "/properties/launchDate",
+     "labels": [
+      "Launch date"
+     ],
+     "before": "2027-02-15",
+     "after": null,
+     "display": {
+      "type": "string",
+      "format": "date"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Stage changed from Proto sample to Dropped",
+     "Launch date cleared (was Feb 15, 2027)"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Stage changed from Proto sample to Dropped",
+     "Launch date cleared (was 15 Feb 2027)"
+    ]
+   }
+  },
+  {
+   "name": "spec example",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/phone",
+     "afterPath": "/phone",
+     "schemaPath": "/properties/phone",
+     "labels": [
+      "Phone"
+     ],
+     "before": "98400 11111",
+     "after": "98400 22222",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/status",
+     "afterPath": "/status",
+     "schemaPath": "/properties/status",
+     "labels": [
+      "Status"
+     ],
+     "before": "lead",
+     "after": "active",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Lead",
+      "afterLabel": "Active customer"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/orders/0/qty",
+     "afterPath": "/orders/0/qty",
+     "schemaPath": "/properties/orders/items/properties/qty",
+     "labels": [
+      "Orders",
+      "Blue kurta",
+      "Quantity"
+     ],
+     "before": 2,
+     "after": 3,
+     "item": {
+      "key": "A1",
+      "label": "Blue kurta"
+     },
+     "display": {
+      "type": "integer",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_REMOVED",
+     "beforePath": "/orders/1",
+     "schemaPath": "/properties/orders/items",
+     "labels": [
+      "Orders",
+      "Red saree"
+     ],
+     "before": {
+      "id": "A2",
+      "product": "Red saree",
+      "qty": 1
+     },
+     "item": {
+      "key": "A2",
+      "label": "Red saree"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Order",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Phone changed from \"98400 11111\" to \"98400 22222\"",
+     "Status changed from Lead to Active customer",
+     "Orders › Blue kurta: Quantity changed from 2 to 3",
+     "Order \"Red saree\" removed from Orders"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Phone changed from \"98400 11111\" to \"98400 22222\"",
+     "Status changed from Lead to Active customer",
+     "Orders › Blue kurta: Quantity changed from 2 to 3",
+     "Order \"Red saree\" removed from Orders"
+    ]
+   }
+  },
+  {
+   "name": "spec example reversed",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/phone",
+     "afterPath": "/phone",
+     "schemaPath": "/properties/phone",
+     "labels": [
+      "Phone"
+     ],
+     "before": "98400 22222",
+     "after": "98400 11111",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/status",
+     "afterPath": "/status",
+     "schemaPath": "/properties/status",
+     "labels": [
+      "Status"
+     ],
+     "before": "active",
+     "after": "lead",
+     "display": {
+      "type": "string",
+      "beforeLabel": "Active customer",
+      "afterLabel": "Lead"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/orders/0/qty",
+     "afterPath": "/orders/0/qty",
+     "schemaPath": "/properties/orders/items/properties/qty",
+     "labels": [
+      "Orders",
+      "Blue kurta",
+      "Quantity"
+     ],
+     "before": 3,
+     "after": 2,
+     "item": {
+      "key": "A1",
+      "label": "Blue kurta"
+     },
+     "display": {
+      "type": "integer",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/orders/1",
+     "schemaPath": "/properties/orders/items",
+     "labels": [
+      "Orders",
+      "Red saree"
+     ],
+     "after": {
+      "id": "A2",
+      "product": "Red saree",
+      "qty": 1
+     },
+     "item": {
+      "key": "A2",
+      "label": "Red saree"
+     },
+     "display": {
+      "type": "object",
+      "itemNoun": "Order",
+      "itemLabels": [
+       1
+      ]
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Phone changed from \"98400 22222\" to \"98400 11111\"",
+     "Status changed from Active customer to Lead",
+     "Orders › Blue kurta: Quantity changed from 3 to 2",
+     "Order \"Red saree\" added to Orders"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Phone changed from \"98400 22222\" to \"98400 11111\"",
+     "Status changed from Active customer to Lead",
+     "Orders › Blue kurta: Quantity changed from 3 to 2",
+     "Order \"Red saree\" added to Orders"
+    ]
+   }
+  },
+  {
+   "name": "reorder",
+   "changes": [
+    {
+     "code": "LIST_REORDERED",
+     "beforePath": "/orders",
+     "afterPath": "/orders",
+     "schemaPath": "/properties/orders",
+     "labels": [
+      "Orders"
+     ],
+     "before": [
+      "A1",
+      "A2",
+      "A3"
+     ],
+     "after": [
+      "A3",
+      "A1",
+      "A2"
+     ],
+     "display": {
+      "type": "array",
+      "itemNoun": "Order"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Orders reordered"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Orders reordered"
+    ]
+   }
+  },
+  {
+   "name": "created",
+   "changes": [
+    {
+     "code": "RECORD_CREATED",
+     "afterPath": "",
+     "schemaPath": "",
+     "labels": [
+      "Contact"
+     ],
+     "after": {
+      "name": "Rajesh Kumar",
+      "phone": "98400 22222",
+      "status": "active",
+      "orders": [
+       {
+        "id": "A1",
+        "product": "Blue kurta",
+        "qty": 3
+       }
+      ]
+     },
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Contact created"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Contact created"
+    ]
+   }
+  },
+  {
+   "name": "deleted",
+   "changes": [
+    {
+     "code": "RECORD_DELETED",
+     "beforePath": "",
+     "schemaPath": "",
+     "labels": [
+      "Contact"
+     ],
+     "before": {
+      "name": "Rajesh Kumar",
+      "phone": "98400 11111",
+      "status": "lead",
+      "orders": [
+       {
+        "id": "A1",
+        "product": "Blue kurta",
+        "qty": 2
+       },
+       {
+        "id": "A2",
+        "product": "Red saree",
+        "qty": 1
+       }
+      ]
+     },
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Contact deleted"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Contact deleted"
+    ]
+   }
+  },
+  {
+   "name": "redacted and objects",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/password",
+     "afterPath": "/password",
+     "schemaPath": "/properties/password",
+     "labels": [
+      "Password"
+     ],
+     "display": {
+      "type": "string"
+     },
+     "redacted": true,
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CLEARED",
+     "beforePath": "/address",
+     "afterPath": "/address",
+     "schemaPath": "/properties/address",
+     "labels": [
+      "Address"
+     ],
+     "before": {
+      "city": "C"
+     },
+     "after": null,
+     "display": {
+      "type": "object"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "ITEM_ADDED",
+     "afterPath": "/tags/0",
+     "schemaPath": "/properties/tags/items",
+     "labels": [
+      "Tags"
+     ],
+     "after": "x",
+     "display": {
+      "type": "string",
+      "itemNoun": "Tag"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Password changed",
+     "Address removed",
+     "\"x\" added to Tags"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Password changed",
+     "Address removed",
+     "\"x\" added to Tags"
+    ]
+   }
+  },
+  {
+   "name": "dates and unicode",
+   "changes": [
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/d",
+     "afterPath": "/d",
+     "schemaPath": "/properties/d",
+     "labels": [
+      "D"
+     ],
+     "before": "2026-01-31",
+     "after": "2026-02-01",
+     "display": {
+      "type": "string",
+      "format": "date"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/t",
+     "afterPath": "/t",
+     "schemaPath": "/properties/t",
+     "labels": [
+      "T"
+     ],
+     "before": "2026-10-21T10:00:00+05:30",
+     "after": "2026-10-21T04:30:00Z",
+     "display": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/s",
+     "afterPath": "/s",
+     "schemaPath": "/properties/s",
+     "labels": [
+      "S"
+     ],
+     "before": "é",
+     "after": "é",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "FIELD_CHANGED",
+     "beforePath": "/n",
+     "afterPath": "/n",
+     "schemaPath": "/properties/n",
+     "labels": [
+      "N"
+     ],
+     "before": 1234567.5,
+     "after": 1152921504606847000,
+     "display": {
+      "type": "number"
+     },
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "D changed from Jan 31, 2026 to Feb 1, 2026",
+     "T changed from Oct 21, 2026, 4:30 AM (+05:30) to Oct 21, 2026, 4:30 AM (+00:00)",
+     "S changed from \"é\" to \"é\" (Unicode form changed)",
+     "N changed from 1,234,567.5 to 1,152,921,504,606,846,976"
+    ],
+    "en-IN Asia/Kolkata": [
+     "D changed from 31 Jan 2026 to 1 Feb 2026",
+     "T changed from 21 Oct 2026, 10:00 am (+05:30) to 21 Oct 2026, 10:00 am (+00:00)",
+     "S changed from \"é\" to \"é\" (Unicode form changed)",
+     "N changed from 12,34,567.5 to 11,52,92,15,04,60,68,46,976"
+    ]
+   }
+  },
+  {
+   "name": "truncated",
+   "changes": [
+    {
+     "code": "FIELD_SET",
+     "beforePath": "/name",
+     "afterPath": "/name",
+     "schemaPath": "/properties/name",
+     "labels": [
+      "Name"
+     ],
+     "after": "a",
+     "display": {
+      "type": "string"
+     },
+     "inSchema": true
+    },
+    {
+     "code": "TRUNCATED",
+     "labels": [],
+     "display": {},
+     "inSchema": true
+    }
+   ],
+   "sentences": {
+    "default": [
+     "Name set to \"a\"",
+     "More changes not shown"
+    ],
+    "en-IN Asia/Kolkata": [
+     "Name set to \"a\"",
+     "More changes not shown"
+    ]
+   }
+  }
+ ]
+}

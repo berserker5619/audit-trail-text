@@ -20,12 +20,14 @@ export class DiffError extends Error {
   readonly side?: 'before' | 'after';
   /** The duplicate key value, for DUPLICATE_KEY. */
   readonly key?: unknown;
+  /** Both items' paths, for DUPLICATE_KEY across a tree. */
+  readonly paths?: readonly [string, string];
 
   constructor(
     code: DiffErrorCode,
     path: string,
     message: string,
-    extra: { side?: 'before' | 'after'; key?: unknown } = {},
+    extra: { side?: 'before' | 'after'; key?: unknown; paths?: readonly [string, string] } = {},
   ) {
     const where = extra.side ? `${extra.side} ${path || '/'}` : path || '/';
     super(`${code} at ${where}: ${message}`);
@@ -34,5 +36,6 @@ export class DiffError extends Error {
     this.path = path;
     if (extra.side !== undefined) this.side = extra.side;
     if ('key' in extra) this.key = extra.key;
+    if (extra.paths) this.paths = extra.paths;
   }
 }

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0 (unreleased)
+
+Trees of any depth, objects compared as one value, labels in every language, and moves across parents, so the package can describe Dynamic Entity records and forms. Everything is opt-in or only triggers on schemas 1.1 refused. Changes stored by 1.0 and 1.1 describe as before, except a sentence with more than three enclosing items, which now starts with "…" (see `maxParents`).
+
+- **Recursive schemas.** A `$ref` may point back to a definition it sits inside, so a part can contain parts; the data decides the depth, up to `maxDepth` (default still 32). A `$ref` loop that never reaches a property or list item is still `INVALID_SCHEMA`. Recursive definitions are built once and reused, and their `schemaPath` names the definition (`/$defs/part/properties/qty`), so every level shares one path. A list directly inside an item of the same definition adds no title of its own: "Parts › Body › Sleeve".
+- **Labels file entries for definitions:** a key starting with `$defs/` applies wherever that definition is used, such as `"$defs/part/qty"` or `"$defs/partList#key"`. Path entries still win at their own place.
+- **`maxParents`** (`describe`, default 3): a sentence names at most this many enclosing items, after "…": "… › Body › Sleeve › Cuff: Quantity changed from 2 to 3". `labels` always holds the full path. A 1.x change with more than three enclosing items reads shortened too; pass `maxParents: Infinity` for the 1.1 wording.
+- **No stack overflow at any depth.** The diff walk, value copies, equality and input checks use an explicit stack, tested at `maxDepth` 10,000.
+- **Objects as one value** (`x-atomic: true`, or `#atomic` in the labels file): compared by `x-key` when both sides have it, else as a whole, and named by `x-label`, a template or `"@lang"`. A renamed option under the same key is no change. Lists of atomic values are matched by key. Sensitive fields inside are stripped and not compared. `x-atomic` on a schema that isn't an object is `INVALID_SCHEMA`.
+- **Labels in every language:** `x-title`, `x-itemNoun`, `oneOf` entries' `x-title`, labels file values, `"@lang"` objects, and `x-label` fields that hold language maps. `labels` and `display` labels stay strings, in the new `diffRecords` option `fallbackLanguage` (default `en`); the maps travel in the new optional `display.i18n`. `describe` takes `language` (default: the language part of `locale`) and `fallbackLanguage`, and picks the exact language, its base, the fallback, then the map's first language, skipping keys that start with `$`. `translateLabel` is not called for labels stored with a map.
+- **Moves across parents** (`x-key-scope: "tree"`, or `#scope` in the labels file): an item whose parent differs between versions is one `ITEM_MOVED`, "Part "Cuff" moved from Sleeve to Collar", followed by its own field changes at the new place. It is named as it is after the edit. A child that stays under its moving parent is not moved. A key used twice in one tree throws `DUPLICATE_KEY`, with both paths in the new `DiffError.paths`. Only lists of the same definition form a tree.
+- `x-label` templates whose fields hold a language-map object now read the map in the stored language; 1.1 printed the object as JSON.
+- **New error cases, no new codes:** `INVALID_OPTION` for an invalid `fallbackLanguage`, `language` or `maxParents`; `INVALID_SCHEMA` for `x-atomic`, `x-key-scope`, `x-title` or `x-itemNoun` values it can't read, and for a language map where the labels file needs text (`#key`, `#label`, `#atomic`, `#scope`); `SENSITIVE_KEY` for an atomic key or label that uses a sensitive field.
+- **New code** `ITEM_MOVED`, message keys `ITEM_MOVED` and `ITEM_MOVED:redacted`, and template tokens `{from}` and `{to}`.
+- New optional fields: `ChangeDisplay.fromParent`, `toParent`, `fromItemLabels` and `i18n`; `Adapter.recordNounI18n`; `titleI18n` on nodes, `itemNounI18n`, `def` and `keyScope` on lists, `valueLabelsI18n` and `atomic` on values; `DiffError.paths`. New types `LangMap`, `ChangeI18n` and `AtomicSpec`.
+- The bundle limit is 14 KB gzipped and 36 KB minified, up from 10 KB and 24 KB, for these features: the main entry is 12.4 KB gzipped.
+
 ## 1.1.0 (2026-10-21)
 
 The 1.1 candidates from the 1.0.0 edge-case round (#1 to #8). Some codes, stored changes and errors differ from 1.0.x, as listed.

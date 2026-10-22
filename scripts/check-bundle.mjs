@@ -6,10 +6,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-const MAX_MIN_BYTES = 24 * 1024;
-// Raised from 8 KB in 1.1.0: map entries, allOf and option checks took the gzipped entry to about
-// 7.8 KB (8,018 bytes), up from 6.9 KB in 1.0.1. Raise it again only for a feature, not drift.
-const MAX_GZIP_BYTES = 10 * 1024;
+// Both raised in 1.2.0, from 24 KB and 10 KB: recursive schemas, atomic values, language maps and
+// moves across parents took the entry to 33,717 bytes minified and 12,694 gzipped, up from about
+// 8 KB gzipped in 1.1.0. Raise them again only for a feature, not drift.
+const MAX_MIN_BYTES = 36 * 1024;
+const MAX_GZIP_BYTES = 14 * 1024;
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const failures = [];

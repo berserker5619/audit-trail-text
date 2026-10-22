@@ -1,7 +1,7 @@
 import { diffRecords } from './diff.ts';
 import { DiffError } from './errors.ts';
-import type { Adapter, Change, DiffOptions } from './types.ts';
-import { canonical, isPlainObject } from './util.ts';
+import type { Adapter, Change, DiffOptions, LangMap } from './types.ts';
+import { canonical, isPlainObject, pickLang } from './util.ts';
 
 /** A piece of a sentence, so a UI can style field names and values without parsing the text. */
 export interface SentencePart {
@@ -25,6 +25,9 @@ export interface TemplateValues {
   itemNoun: string;
   list: string;
   record: string;
+  /** ITEM_MOVED: where the item came from and went to. */
+  from: string;
+  to: string;
 }
 
 export interface LabelContext {
@@ -51,7 +54,8 @@ export type MessageKey =
   | 'ITEM_ADDED:value'
   | 'ITEM_REMOVED:value'
   | 'ITEM_ADDED:redacted'
-  | 'ITEM_REMOVED:redacted';
+  | 'ITEM_REMOVED:redacted'
+  | 'ITEM_MOVED:redacted';
 
 export interface DescribeOptions {
   /** Default "en". Never guessed from the machine. */
@@ -61,8 +65,17 @@ export interface DescribeOptions {
   /** Default 80. Longer values are cut with "…"; raw values stay whole in the change. */
   maxValueLength?: number;
   messages?: Partial<Record<MessageKey, Template>>;
-  /** Translates the app's own words. Item names, such as a product called "Rose", never go through it. */
+  /**
+   * Translates the app's own words. Item names, such as a product called "Rose", never go through
+   * it, and neither do labels stored with a language map.
+   */
   translateLabel?: (label: string, context: LabelContext) => string;
+  /** The language picked from labels stored with a language map. Default: the language part of `locale`. */
+  language?: string;
+  /** Default "en". Used when a map lacks `language`; a map lacking both gives its first language. */
+  fallbackLanguage?: string;
+  /** Default 3. A sentence names at most this many enclosing items: "… › Body › Sleeve › Cuff: …". */
+  maxParents?: number;
 }
 
 /** English templates. Nested fields get "{parents}: " in front. */
@@ -83,13 +96,15 @@ export const defaultMessages: Readonly<Record<MessageKey, string>> = {
   'ITEM_REMOVED:value': '{item} removed from {list}',
   'ITEM_ADDED:redacted': '{itemNoun} added to {list}',
   'ITEM_REMOVED:redacted': '{itemNoun} removed from {list}',
+  ITEM_MOVED: '{itemNoun} {item} moved from {from} to {to}',
+  'ITEM_MOVED:redacted': '{itemNoun} moved from {from} to {to}',
   LIST_REORDERED: '{list} reordered',
   RECORD_CREATED: '{record} created',
   RECORD_DELETED: '{record} deleted',
   TRUNCATED: 'More changes not shown',
 };
 
-const FIELD_TOKENS = new Set(['field', 'parents', 'itemNoun', 'list', 'record']);
+const FIELD_TOKENS = new Set(['field', 'parents', 'itemNoun', 'list', 'record', 'from', 'to']);
 
 /** Writes one sentence per change. Needs no adapter: each change carries its own display details. */
 export function describe(changes: readonly Change[], options: DescribeOptions = {}): Sentence[] {
@@ -112,22 +127,28 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
     options.translateLabel?.(label, { kind, schemaPath: change.schemaPath }) ?? label;
   // A change stored without display details (hand-written, or from before 1.0) reads as untyped.
   const display: Change['display'] = change.display ?? {};
+  const i18n = display.i18n ?? {};
+  // A label stored with a language map is read in the reader's language; others as stored.
+  const pick = (map: LangMap | null | undefined, text: string | undefined) => (map ? fmt.pick(map) : text);
   const items = new Set(display.itemLabels ?? []);
-  const isItem = change.code === 'ITEM_ADDED' || change.code === 'ITEM_REMOVED';
+  const isMove = change.code === 'ITEM_MOVED';
+  const isItem = change.code === 'ITEM_ADDED' || change.code === 'ITEM_REMOVED' || isMove;
   const isRecord = change.code === 'RECORD_CREATED' || change.code === 'RECORD_DELETED';
-  const objectItem = isItem && display.type === 'object';
+  // An object list's item is named by its item label; an atomic value in a list by its value label.
+  const valueLabel = change.code === 'ITEM_ADDED' ? display.afterLabel : change.code === 'ITEM_REMOVED' ? display.beforeLabel : undefined;
+  const objectItem = isItem && display.type === 'object' && valueLabel === undefined;
   // An item change's labels end with the item's name, except for plain values and sensitive lists.
   const last = change.labels.length - 1;
   const listIndex = isItem && items.has(last) ? last - 1 : last;
   const kindAt = (i: number): LabelContext['kind'] =>
     isRecord ? 'record' : items.has(i + 1) || (i === listIndex && (isItem || change.code === 'LIST_REORDERED')) ? 'list' : 'field';
-  const labels = change.labels.map((label, i) => (items.has(i) ? label : translate(label, kindAt(i))));
-  const field = labels[listIndex] ?? '';
-  const parents = labels.slice(0, Math.max(listIndex, 0));
+  const labels = change.labels.map((label, i) => pick(i18n.labels?.[i], undefined) ?? (items.has(i) ? label : translate(label, kindAt(i))));
+  const field = isMove ? '' : (labels[listIndex] ?? '');
+  const parents = isMove ? [] : fmt.shorten(labels.slice(0, Math.max(listIndex, 0)), items);
 
   const redacted = change.redacted === true;
-  let before = redacted ? EMPTY : fmt.value(change.before, display.beforeLabel, change);
-  let after = redacted ? EMPTY : fmt.value(change.after, display.afterLabel, change);
+  let before = redacted ? EMPTY : fmt.value(change.before, pick(i18n.beforeLabel, display.beforeLabel), change);
+  let after = redacted ? EMPTY : fmt.value(change.after, pick(i18n.afterLabel, display.afterLabel), change);
   // Two date-times that format the same: the same instant written with different offsets shows
   // its offsets; anything else (seconds, precision) is shown as written.
   if (change.code === 'FIELD_CHANGED' && !redacted && display.format === 'date-time' && before.text === after.text) {
@@ -153,15 +174,35 @@ function sentence(change: Change, options: DescribeOptions, fmt: Formatter): Sen
       : change.code === 'ITEM_ADDED' ? after : before
     : EMPTY;
 
+  // Where a moved item came from and went to, named by as many trailing labels as tell them apart.
+  let from = '';
+  let to = '';
+  if (isMove) {
+    const fromItems = new Set(display.fromItemLabels ?? []);
+    const fromLabels = display.fromParent ?? [];
+    const fromPath = fromLabels.map((t, i) =>
+      pick(i18n.fromParent?.[i], undefined) ??
+      (fromItems.has(i) ? t : translate(t, fromItems.has(i + 1) || i === fromLabels.length - 1 ? 'list' : 'field')),
+    );
+    const toPath = labels.slice(0, listIndex + 1);
+    let n = 1;
+    const tail = (p: string[]) => p.slice(-n).join(' › ');
+    while (n < Math.max(fromPath.length, toPath.length) && tail(fromPath) === tail(toPath)) n++;
+    from = tail(fromPath);
+    to = tail(toPath);
+  }
+
   const values: Record<keyof TemplateValues, Formatted> = {
     field: plain(field),
     parents: plain(parents.join(' › ')),
     before,
     after,
     item,
-    itemNoun: plain(isItem ? translate(display.itemNoun ?? 'Item', 'itemNoun') : ''),
-    list: plain(field),
+    itemNoun: plain(isItem ? (pick(i18n.itemNoun, undefined) ?? translate(display.itemNoun ?? 'Item', 'itemNoun')) : ''),
+    list: plain(isMove ? to : field),
     record: plain(isRecord ? (labels[0] ?? '') : ''),
+    from: plain(from),
+    to: plain(to),
   };
 
   const key = unicodeOnly ? 'FIELD_CHANGED:unicode' : messageKey(change, objectItem);
@@ -186,9 +227,13 @@ function messageKey(change: Change, objectItem: boolean): MessageKey {
   const { code } = change;
   if (code === 'FIELD_SET' || code === 'FIELD_CLEARED' || code === 'FIELD_CHANGED') {
     if (change.redacted) return `${code}:redacted`;
-    const whole = [change.before, change.after].some((v) => Array.isArray(v) || isPlainObject(v));
+    // An object or list reads as a whole, unless it has a label, such as an atomic option.
+    const d = change.display ?? {};
+    const sides: [unknown, string | undefined][] = [[change.before, d.beforeLabel], [change.after, d.afterLabel]];
+    const whole = sides.some(([v, label]) => (Array.isArray(v) || isPlainObject(v)) && label === undefined);
     return whole ? `${code}:whole` : code;
   }
+  if (code === 'ITEM_MOVED') return change.redacted ? 'ITEM_MOVED:redacted' : code;
   if (code === 'ITEM_ADDED' || code === 'ITEM_REMOVED') {
     if (change.redacted) return `${code}:redacted`;
     return objectItem ? code : `${code}:value`;
@@ -259,6 +304,9 @@ const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2
 
 class Formatter {
   readonly #max: number;
+  readonly #language: string;
+  readonly #fallbackLanguage: string;
+  readonly #maxParents: number;
   readonly #number: Intl.NumberFormat;
   readonly #date: Intl.DateTimeFormat;
   readonly #dateTime: Intl.DateTimeFormat;
@@ -282,11 +330,41 @@ class Formatter {
     check('maxValueLength', this.#max, () => {
       if (!Number.isInteger(this.#max) || this.#max < 1) throw new Error('it must be a whole number of 1 or more');
     });
+    const tag = (value: unknown) => {
+      if (typeof value !== 'string' || value === '') throw new Error('it must be a language tag such as "de"');
+      Intl.getCanonicalLocales(value);
+    };
+    this.#language = options.language ?? (Intl.getCanonicalLocales(locale)[0] ?? 'en').split('-')[0]!;
+    this.#fallbackLanguage = options.fallbackLanguage ?? 'en';
+    check('language', this.#language, () => tag(this.#language));
+    check('fallbackLanguage', this.#fallbackLanguage, () => tag(this.#fallbackLanguage));
+    this.#maxParents = options.maxParents ?? 3;
+    check('maxParents', this.#maxParents, () => {
+      if (this.#maxParents !== Infinity && (!Number.isInteger(this.#maxParents) || this.#maxParents < 0)) {
+        throw new Error('it must be a whole number of 0 or more, or Infinity');
+      }
+    });
     this.#number = new Intl.NumberFormat(locale, { maximumFractionDigits: 20 });
     // Date-only values are built at UTC midnight and shown in UTC, so no time zone can shift them.
     this.#date = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     this.#dateTime = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone });
     this.#graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(locale, { granularity: 'grapheme' }) : undefined;
+  }
+
+  /** A language map's text in the reader's language. */
+  pick(map: LangMap): string {
+    return pickLang(map, this.#language, this.#fallbackLanguage);
+  }
+
+  /**
+   * Keeps the labels from the `maxParents`-th enclosing item from the end, after "…". Paths with
+   * no more items than that are left whole.
+   */
+  shorten(parents: string[], items: ReadonlySet<number>): string[] {
+    const positions = parents.map((_, i) => i).filter((i) => items.has(i));
+    if (positions.length <= this.#maxParents) return parents;
+    const from = this.#maxParents === 0 ? parents.length : positions[positions.length - this.#maxParents]!;
+    return ['…', ...parents.slice(from)];
   }
 
   value(v: unknown, label: string | undefined, change: Change): Formatted {

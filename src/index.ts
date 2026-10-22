@@ -7,12 +7,15 @@ export { DiffError } from './errors.ts';
 export type { DiffErrorCode } from './errors.ts';
 export type {
   Adapter,
+  AtomicSpec,
   Change,
   ChangeCode,
   ChangeDisplay,
+  ChangeI18n,
   DiffOptions,
   FieldNode,
   ItemRef,
+  LangMap,
   ObjectListNode,
   ObjectNode,
   PatternEntry,

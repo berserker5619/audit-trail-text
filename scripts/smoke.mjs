@@ -24,4 +24,23 @@ assert.deepEqual(describeChanges(before, after, jsonSchemaAdapter(schema), { loc
   'Orders \u203a Blue kurta: Quantity changed from 2 to 3',
   'Order "Red saree" removed from Orders',
 ]);
+
+// 1.2: a recursive schema, a move across parents, an atomic option and a language map.
+const style = {
+  type: 'object',
+  properties: { parts: { $ref: '#/$defs/list' }, status: { type: 'object', 'x-atomic': true, 'x-key': '$key', 'x-label': '@lang', 'x-title': { en: 'Status', de: 'Status' } } },
+  $defs: {
+    list: { title: 'Parts', type: 'array', 'x-key': 'id', 'x-key-scope': 'tree', items: { $ref: '#/$defs/part' } },
+    part: { title: 'Part', type: 'object', properties: { id: { type: 'string' }, parts: { $ref: '#/$defs/list' } } },
+  },
+};
+assert.deepEqual(
+  describeChanges(
+    { parts: [{ id: 'Sleeve', parts: [{ id: 'Cuff' }] }, { id: 'Collar' }], status: { $key: 'lead', en: 'Lead', de: 'Interessent' } },
+    { parts: [{ id: 'Sleeve' }, { id: 'Collar', parts: [{ id: 'Cuff' }] }], status: { $key: 'active', en: 'Active', de: 'Aktiv' } },
+    jsonSchemaAdapter(style),
+    { language: 'de' },
+  ).map((s) => s.text),
+  ['Part "Cuff" moved from Sleeve to Collar', 'Status changed from Interessent to Aktiv'],
+);
 console.log(`✔ built package works on Node ${process.version}`);

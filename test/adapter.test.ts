@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { diffRecords, jsonSchemaAdapter } from '../src/index.ts';
+import { diffRecords, jsonSchemaAdapter, type ObjectNode } from '../src/index.ts';
 import { contactSchema } from './helpers.ts';
 
 const list = (extra: Record<string, unknown> = {}, itemProps: Record<string, unknown> = { id: { type: 'string' } }) => ({
@@ -67,13 +67,27 @@ describe('jsonSchemaAdapter', () => {
     assert.throws(() => jsonSchemaAdapter(list({ 'x-key': 'name', 'x-label': '{name} {secret}' }, props)), { code: 'SENSITIVE_KEY' });
   });
 
-  test('external, missing and recursive $refs throw INVALID_SCHEMA', () => {
+  test('external and missing $refs, and $ref loops that describe no data, throw INVALID_SCHEMA', () => {
     assert.throws(() => jsonSchemaAdapter({ type: 'object', properties: { a: { $ref: 'other.json#/x' } } }), { code: 'INVALID_SCHEMA', path: '/properties/a' });
     assert.throws(() => jsonSchemaAdapter({ type: 'object', properties: { a: { $ref: '#/$defs/nope' } } }), { code: 'INVALID_SCHEMA' });
+    // a refers to b, b refers to a: no property or item in between.
     assert.throws(
-      () => jsonSchemaAdapter({ type: 'object', properties: { node: { $ref: '#/$defs/n' } }, $defs: { n: { type: 'object', properties: { child: { $ref: '#/$defs/n' } } } } }),
-      { code: 'INVALID_SCHEMA', message: /recursive/ },
+      () => jsonSchemaAdapter({ type: 'object', properties: { x: { $ref: '#/$defs/a' } }, $defs: { a: { $ref: '#/$defs/b' }, b: { $ref: '#/$defs/a' } } }),
+      { code: 'INVALID_SCHEMA', message: /loops back to itself without describing any data/ },
     );
+    assert.throws(
+      () => jsonSchemaAdapter({ type: 'object', properties: { x: { $ref: '#/$defs/a' } }, $defs: { a: { allOf: [{ $ref: '#/$defs/a' }] } } }),
+      { code: 'INVALID_SCHEMA' },
+    );
+  });
+
+  test('a recursive $ref is followed as deep as the data goes (1.2)', () => {
+    const a = jsonSchemaAdapter({ type: 'object', properties: { node: { $ref: '#/$defs/n' } }, $defs: { n: { type: 'object', properties: { child: { $ref: '#/$defs/n' } } } } });
+    const node = a.root.properties.get('node')! as ObjectNode;
+    const child = node.properties.get('child')! as ObjectNode;
+    // Built once per use (here titled "Node" and "Child"), then reused at every depth.
+    assert.equal(child.properties.get('child'), child);
+    assert.deepEqual([node.title, child.title, node.schemaPath, child.schemaPath], ['Node', 'Child', '/$defs/n', '/$defs/n']);
   });
 
   test('the same $def used twice is not recursion', () => {
