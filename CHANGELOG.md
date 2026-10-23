@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 (unreleased)
+## 1.3.0 (2026-10-23)
 
 A Mongoose plugin, in a new server-only entry, and one small core addition. The main entry, its zero dependencies and its stored changes are unchanged.
 
