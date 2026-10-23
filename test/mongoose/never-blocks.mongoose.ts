@@ -89,6 +89,9 @@ test('a slow audit database: at most auditTimeoutMS extra per write, then auditE
   const Order = orderModel({ auditTimeoutMS: 150 });
   const errors = collect(Order);
   const doc = await Order.create({ customer: 'A', status: 'open' });
+  // The setup write is the first to the audit collection, which creates it: under load that can
+  // take longer than this test's tight budget. Only the writes below are under test.
+  errors.length = 0;
   const findOne = Order.findOne;
   Order.findOne = () => stalled();
   const started = Date.now();
@@ -115,6 +118,7 @@ test('a slow audit database: at most auditTimeoutMS extra per write, then auditE
     (conn as any).collection = collection;
   }
   assert.ok(Date.now() - t < 1000);
+  assert.equal(errors.length, 2);
   assert.equal(errors[1].stage, 'write');
   assert.equal(errors[1].error.name, 'AuditTimeoutError');
 });
