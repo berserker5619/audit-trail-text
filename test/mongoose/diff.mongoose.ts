@@ -13,7 +13,7 @@ const adapters: Record<string, ReturnType<typeof jsonSchemaAdapter>> = {
   deal: jsonSchemaAdapter({ title: 'Deal', type: 'object', properties: { amount: { type: 'number', title: 'Amount' } } }),
 };
 
-function looseModel(diff: unknown, options: Record<string, unknown> = {}) {
+function looseModel(diff: any, options: Record<string, unknown> = {}) {
   const schema = new mongoose.Schema({ entity: String }, { strict: false });
   schema.plugin(auditTrail, { diff, logger: quietLogger(), ...options });
   return model(conn, 'Record', schema);
