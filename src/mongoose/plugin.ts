@@ -566,6 +566,7 @@ async function beforeSave(doc: Any, cfg: Config): Promise<void> {
     const cap = captured.get(doc);
     let before: Json | null;
     if (cap?.converted) before = cap.converted;
+    else if (cap?.raw && readsBackSave(model)) before = rawJson(info, cap);
     else if (cap?.raw) before = beforeFromRaw(model, info, cap, doc);
     else before = json(model, await state.budget.run(readOne(model, info, { _id: doc._id }, session)), cfg).value;
     // A `select: false` path changed on a document loaded without it: read just that path.
@@ -608,6 +609,22 @@ function beforeFromRaw(model: Any, info: SchemaInfo, cap: Captured, doc: Any): J
   return before;
 }
 
+/**
+ * Mongoose 7 stores empty objects set on the paths a save changes, where toObject() leaves them
+ * out, so the document as saved isn't the document in memory: its save is read back, and its
+ * before value is the raw document as loaded. Mongoose 8 and later store what toObject() gives.
+ */
+function readsBackSave(model: Any): boolean {
+  return majorVersion(model) < 8;
+}
+
+/** The raw loaded document as stored, with the values Mongoose shares with it put back as loaded. */
+function rawJson(info: SchemaInfo, cap: Captured): Json {
+  const before = toJson(cap.raw, info.shape);
+  if (cap.shared) restoreShared(before, cap.shared);
+  return before;
+}
+
 /** A dotted path through objects only: reading one field of a list item isn't supported. */
 function isPlainPath(info: SchemaInfo, path: string): boolean {
   let shape: Any = info.shape;
@@ -644,6 +661,27 @@ async function afterSave(doc: Any, cfg: Config): Promise<void> {
   const model = doc.constructor;
   const info = infoFor(model, cfg);
   if (!info) return;
+  if (!state.isNew && readsBackSave(model)) {
+    // Mongoose 7: the save is read back, so the after value is what it stored. Outside a
+    // transaction, another writer's change in between can show in this entry too.
+    const work = async () => {
+      let after: Json | null;
+      try {
+        after = json(model, await state.budget.run(readOne(model, info, { _id: doc._id }, state.session)), cfg).value;
+      } catch (error) {
+        report(model, cfg, { model: rootName(model), docId: doc._id, operation: 'update', stage: 'after', error });
+        return;
+      }
+      if (!after) return;
+      if (cfg.captureOnLoad) captured.set(doc, { converted: after });
+      const job: Job = { model, info, operation: 'update', docId: doc._id, before: state.before ?? null, after, who: state.who };
+      await run(job, state.session, state.budget, cfg);
+    };
+    if (cfg.captureOnLoad) captured.delete(doc);
+    if (cfg.background && !inTransaction(state.session)) track(work());
+    else await work();
+    return;
+  }
   // The after value is taken now, before the app can change the document again.
   const after = toJson(doc, info.shape);
   if (cfg.captureOnLoad) captured.set(doc, { converted: after });
@@ -748,6 +786,8 @@ interface QueryState {
   upsert: boolean;
   /** findOneAndUpdate or findOneAndReplace returning the whole document after the write. */
   returnsAfter: boolean;
+  /** findOneAndUpdate or findOneAndReplace returning the whole document as it was before the write. */
+  returnsBefore: boolean;
   before?: Any;
   befores?: Any[];
 }
@@ -794,11 +834,14 @@ async function beforeQuery(q: Any, cfg: Config): Promise<void> {
     sort: options.sort,
     collation: options.collation,
     upsert: options.upsert === true,
-    returnsAfter:
-      (op === 'findOneAndUpdate' || op === 'findOneAndReplace') &&
-      (options.returnDocument === 'after' || options.new === true) &&
-      !hasProjection(q, options),
+    returnsAfter: false,
+    returnsBefore: false,
   };
+  if ((op === 'findOneAndUpdate' || op === 'findOneAndReplace') && !hasProjection(q, options)) {
+    const after = options.returnDocument === 'after' || options.new === true;
+    state.returnsAfter = after;
+    state.returnsBefore = !after;
+  }
   const operation: Operation = DELETES.has(op) ? 'delete' : 'update';
   try {
     if (many) {
@@ -927,6 +970,23 @@ async function afterOne(state: QueryState, res: Any, cfg: Config): Promise<void>
     await run(job, state.session, state.budget, cfg);
     return;
   }
+  // A findOneAnd* write that returns the document before it: that is the before value, exactly,
+  // where the read before the write could miss another writer's change. Its select: false paths,
+  // left out, come from that read; their values are never stored.
+  let returnedBefore: Json | undefined;
+  if (state.returnsBefore) {
+    const prior = returnedDocument(res);
+    const raw = prior ? (typeof prior.$__ === 'object' ? captured.get(prior)?.raw : prior) : undefined;
+    const converted = raw ? json(model, raw, cfg) : undefined;
+    if (converted?.info && converted.value) {
+      const read = json(model, state.before, cfg).value;
+      for (const p of converted.info.selectFalse.filter((x) => !x.includes('$*') && isPlainPath(converted.info!, x))) {
+        const v = read ? getPath(read, p) : undefined;
+        if (v !== undefined) setPath(converted.value, p, v);
+      }
+      returnedBefore = converted.value;
+    }
+  }
   let id: unknown = state.before?._id;
   let raw: Any;
   try {
@@ -953,7 +1013,7 @@ async function afterOne(state: QueryState, res: Any, cfg: Config): Promise<void>
     info: after.info,
     operation: state.before ? 'update' : 'create',
     docId: raw._id,
-    before: before.value,
+    before: returnedBefore ?? before.value,
     after: after.value,
     who: state.who,
   };

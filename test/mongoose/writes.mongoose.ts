@@ -226,3 +226,33 @@ test('findOneAndUpdate and findOneAndReplace returning the document after: that 
   // other writer's change. Exact only inside a transaction.
   assert.deepEqual(changes(await race((id) => Order.updateOne({ _id: id }, { status: 'paid' }))), [[['Customer', 'Someone else'], ['Status', 'paid']]]);
 });
+
+test('findOneAndUpdate and findOneAndReplace returning the document before: that document is the before value, not the read before the write', async () => {
+  // Another writer changes the document after the plugin's read and before the write.
+  const schema = orderSchema();
+  let armed: unknown;
+  const race = async function (this: any) {
+    if (armed === undefined) return;
+    const id = armed;
+    armed = undefined;
+    await this.model.collection.updateOne({ _id: id }, { $set: { customer: 'Someone else' } });
+  };
+  schema.pre('findOneAndUpdate', race);
+  schema.pre('findOneAndReplace', race);
+  schema.pre('updateOne', race);
+  const Order = model(conn, 'Order', schema);
+  const changes = async (write: (id: unknown) => Promise<unknown>) => {
+    const doc = await Order.create({ customer: 'A', status: 'open' });
+    armed = doc._id;
+    await write(doc._id);
+    return (await entries(Order))
+      .filter((e) => e.operation === 'update' && String(e.docId) === String(doc._id))
+      .map((e) => e.changes.map((c: any) => [c.labels[0], c.after]));
+  };
+  const statusOnly = [[['Status', 'paid']]];
+  assert.deepEqual(await changes((id) => Order.findOneAndUpdate({ _id: id }, { status: 'paid' })), statusOnly);
+  assert.deepEqual(await changes((id) => Order.findOneAndUpdate({ _id: id }, { status: 'paid' }, { returnDocument: 'before', lean: true })), statusOnly);
+  assert.deepEqual(await changes((id) => Order.findOneAndReplace({ _id: id }, { customer: 'Someone else', status: 'paid' }, { includeResultMetadata: true } as any)), statusOnly);
+  // The control: updateOne returns nothing, so its before value is the read before the write.
+  assert.deepEqual(await changes((id) => Order.updateOne({ _id: id }, { status: 'paid' })), [[['Customer', 'Someone else'], ['Status', 'paid']]]);
+});

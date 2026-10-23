@@ -100,3 +100,32 @@ test('a returned document reaches the diff as stored, without the defaults Mongo
     assert.deepEqual((await entries(M)).map((e) => e.changes.map((c) => [c.before, c.after])), [[['A', 'B']]]);
   }
 });
+
+test('save() setting outer.inner = { deepest: {} }: the entry matches what the save stored, on every Mongoose version', async () => {
+  // Mongoose 7 stores the empty objects; 8 and later leave them out. Either way, the diff gets
+  // the stored document and the entry holds the changes between the stored versions.
+  const adapter = jsonSchemaAdapter({
+    title: 'Record',
+    type: 'object',
+    properties: { name: { type: 'string' }, outer: { type: 'object', properties: { inner: { type: 'object', properties: { deepest: { type: 'object', properties: { flag: { type: 'boolean' } } } } } } } },
+  });
+  const calls: any[] = [];
+  const schema = new mongoose.Schema({ name: String, outer: { inner: { deepest: { flag: Boolean } } } });
+  schema.plugin(auditTrail, { diff: (before: any, after: any) => (calls.push(after), diffRecords(before, after, adapter)), logger: quietLogger() });
+  const M = model(conn, 'Deepest', schema);
+  const stored = async (id: unknown) => {
+    const { __v, ...doc } = (await M.collection.findOne({ _id: id }))!;
+    return JSON.parse(JSON.stringify(doc));
+  };
+  const doc = await M.create({ name: 'A' });
+  const before = await stored(doc._id);
+  const loaded = await M.findById(doc._id);
+  loaded.outer.inner = { deepest: {} };
+  loaded.name = 'B';
+  await loaded.save();
+  const after = await stored(doc._id);
+  assert.deepEqual(calls.at(-1), after, 'the diff got the stored document');
+  const [, update] = await entries(M);
+  assert.deepEqual(JSON.parse(JSON.stringify(update!.changes)), JSON.parse(JSON.stringify(diffRecords(before, after, adapter))));
+  assert.ok(update!.changes.some((c) => c.labels.at(-1) === 'Name'));
+});
