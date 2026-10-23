@@ -79,6 +79,56 @@ jobs:
       - name: Mongoose tests
         run: npm run test:mongoose
 
+  # Integration with Dynamic Entity (integration/dynamic-entity, not published): every write is
+  # checked against DE's own diffEntityRecords, for typed and loose storage. Mongoose 8 runs the
+  # full 2,000 runs per config, split by config across three jobs; 7 and 9 run the core suite at
+  # 200. Each job also runs the path, plugin-off-versus-on and guarantee tests.
+  dynamic-entity:
+    name: Dynamic Entity, Mongoose ${{ matrix.mongoose }}${{ matrix.shard && format(' ({0})', matrix.shard) || '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { mongoose: 8, runs: 2000, shard: 'demo configs 1', only: 'complexFullTest,clients,employees,organizations,visitNotes' }
+          - { mongoose: 8, runs: 2000, shard: 'demo configs 2', only: 'insuranceClaims,people,patientIntake,itAssets' }
+          - { mongoose: 8, runs: 2000, shard: 'generated configs', only: 'allTypes,masked,renamed' }
+          - { mongoose: 7, runs: 200 }
+          - { mongoose: 9, runs: 200 }
+    defaults:
+      run:
+        working-directory: integration/dynamic-entity
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            integration/dynamic-entity/package-lock.json
+      - name: Build this checkout, which the harness uses in place of the published package
+        working-directory: .
+        run: npm ci && npm run build
+      - run: npm ci
+      - name: Install Mongoose ${{ matrix.mongoose }}
+        run: |
+          npm install --no-save --no-audit --no-fund mongoose@${{ matrix.mongoose }}
+          VERSION=$(node -p "require('mongoose/package.json').version")
+          echo "Mongoose $VERSION"
+          case "$VERSION" in ${{ matrix.mongoose }}.*) ;; *) echo "::error::expected Mongoose ${{ matrix.mongoose }}, got $VERSION"; exit 1 ;; esac
+      - name: Dynamic Entity uses this checkout
+        run: |
+          node -e "const r=require('module').createRequire(require.resolve('@dynamic-entity/core/history'));const p=r.resolve('audit-trail-text');if(!require('fs').realpathSync(p).startsWith(require('path').resolve('../..')))throw new Error(p);console.log(p)"
+      - name: Typecheck the harness
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+        env:
+          DE_RUNS: ${{ matrix.runs }}
+          DE_ONLY: ${{ matrix.only }}
+
   # The package promises Node >= 18. Tests run TypeScript directly and need a newer Node, so the
   # built output is checked on the oldest supported Node instead.
   oldest-node:

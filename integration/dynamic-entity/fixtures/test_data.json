@@ -1,0 +1,1524 @@
+[
+  {
+    "entity": "complexFullTest",
+    "version": 1,
+    "name": {
+      "en": "Complex Edge Case Test Suite",
+      "de": "Komplexer Härtetest-Datensatz"
+    },
+    "isSystemDefined": true,
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "IT_SUPPORT",
+        "viewer"
+      ],
+      "edit": [
+        "admin",
+        "manager"
+      ],
+      "delete": [
+        "admin"
+      ],
+      "detailedView": [
+        "admin",
+        "manager",
+        "IT_SUPPORT"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "generalTab",
+        "label": {
+          "en": "Primary & Basics",
+          "de": "Hauptdaten & Basis"
+        },
+        "visibility": true,
+        "systemDefault": true,
+        "isPrimaryTab": true,
+        "flatData": false,
+        "permissions": {
+          "view": [],
+          "edit": [],
+          "delete": [],
+          "detailedView": []
+        },
+        "fields": [
+          {
+            "id": "fullName",
+            "type": "text",
+            "label": {
+              "en": "Full Name",
+              "de": "Vollständiger Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true,
+              "minLength": 3,
+              "maxLength": 100
+            }
+          },
+          {
+            "id": "emailAddress",
+            "type": "text",
+            "label": {
+              "en": "Corporate Email",
+              "de": "Firmen-E-Mail"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true,
+              "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+            }
+          },
+          {
+            "id": "bioNotes",
+            "type": "textarea",
+            "label": {
+              "en": "Executive Summary",
+              "de": "Zusammenfassung"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "validators": {
+              "maxLength": 500
+            }
+          },
+          {
+            "id": "releaseNotes",
+            "type": "markdown",
+            "label": {
+              "en": "Release Notes",
+              "de": "Versionshinweise"
+            },
+            "placeholder": {
+              "en": "# Heading\nSupports **markdown** source."
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "validators": {
+              "maxLength": 2000
+            }
+          },
+          {
+            "id": "annualBudget",
+            "type": "currency",
+            "label": {
+              "en": "Annual Budget ($USD)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "min": 1000,
+              "max": 10000000
+            }
+          },
+          {
+            "id": "teamCount",
+            "type": "number",
+            "label": {
+              "en": "Team Count"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "min": 1,
+              "max": 500
+            }
+          },
+          {
+            "id": "department",
+            "type": "dropdown",
+            "label": {
+              "en": "Department"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "options": [
+              {
+                "value": "ENG",
+                "label": {
+                  "en": "Engineering",
+                  "de": "Ingenieurwesen"
+                }
+              },
+              {
+                "value": "SALES",
+                "label": {
+                  "en": "Sales & Revenue",
+                  "de": "Vertrieb"
+                }
+              },
+              {
+                "value": "FIN",
+                "label": {
+                  "en": "Finance & Ops",
+                  "de": "Finanzen"
+                }
+              }
+            ]
+          },
+          {
+            "id": "roles",
+            "type": "multiSelect",
+            "label": {
+              "en": "Assigned System Roles"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "options": [
+              {
+                "value": "ROLE_LEAD",
+                "label": {
+                  "en": "Team Lead"
+                }
+              },
+              {
+                "value": "ROLE_AUDITOR",
+                "label": {
+                  "en": "Security Auditor"
+                }
+              },
+              {
+                "value": "ROLE_DEVOPS",
+                "label": {
+                  "en": "DevOps Architect"
+                }
+              }
+            ]
+          },
+          {
+            "id": "accountActive",
+            "type": "boolean",
+            "label": {
+              "en": "Account Active & Verified"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "defaultValue": true
+          },
+          {
+            "id": "contactMethod",
+            "type": "radio",
+            "label": {
+              "en": "Preferred Contact Method"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "options": [
+              {
+                "value": "EMAIL",
+                "label": {
+                  "en": "Email Only"
+                }
+              },
+              {
+                "value": "PHONE",
+                "label": {
+                  "en": "Phone Call"
+                }
+              },
+              {
+                "value": "SMS",
+                "label": {
+                  "en": "SMS Text"
+                }
+              }
+            ]
+          },
+          {
+            "id": "optInNewsletter",
+            "type": "checkbox",
+            "label": {
+              "en": "Opt-in to Security Announcements"
+            },
+            "visibility": true,
+            "colSpan": 12
+          }
+        ]
+      },
+      {
+        "id": "datesAndFilesTab",
+        "label": {
+          "en": "Dates, Files & References"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "joinDate",
+            "type": "date",
+            "label": {
+              "en": "Effective Join Date"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "billingCycle",
+            "type": "monthYear",
+            "label": {
+              "en": "Billing Cycle Month/Year"
+            },
+            "visibility": true,
+            "colSpan": 4
+          },
+          {
+            "id": "dailyShiftStart",
+            "type": "text",
+            "label": {
+              "en": "Daily Shift Start Time"
+            },
+            "visibility": true,
+            "colSpan": 4
+          },
+          {
+            "id": "avatarImage",
+            "type": "image",
+            "label": {
+              "en": "Profile Avatar Photo"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "isProfileImage": true
+          },
+          {
+            "id": "complianceDoc",
+            "type": "file",
+            "label": {
+              "en": "Compliance Contract PDF"
+            },
+            "visibility": true,
+            "colSpan": 6
+          },
+          {
+            "id": "orgRef",
+            "type": "entity-ref",
+            "label": {
+              "en": "Linked Parent Organization"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "organizations",
+              "displayFields": [
+                "orgName",
+                "website"
+              ]
+            }
+          },
+          {
+            "id": "syncedClientName",
+            "type": "text",
+            "label": {
+              "en": "Synced Source Client Name (Referenced)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "isReferenced": true,
+            "referencedEntityKey": "clients",
+            "referencedFieldId": "name",
+            "hasDrift": false,
+            "referencedSnapshot": {
+              "label": {
+                "en": "Client Name",
+                "de": "Kundenname"
+              },
+              "type": "text",
+              "validators": {
+                "required": true,
+                "minLength": 2
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "nestedStructuresTab",
+        "label": {
+          "en": "Nested Groups & Dynamic Arrays"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "addressGroup",
+            "type": "group",
+            "label": {
+              "en": "HQ Physical Address"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "children": [
+              {
+                "id": "street",
+                "type": "text",
+                "label": {
+                  "en": "Street Address"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "validators": {
+                  "required": true
+                }
+              },
+              {
+                "id": "city",
+                "type": "text",
+                "label": {
+                  "en": "City"
+                },
+                "visibility": true,
+                "colSpan": 4
+              },
+              {
+                "id": "postalCode",
+                "type": "text",
+                "label": {
+                  "en": "Postal Code"
+                },
+                "visibility": true,
+                "colSpan": 2
+              }
+            ]
+          },
+          {
+            "id": "emergencyContacts",
+            "type": "array",
+            "label": {
+              "en": "Emergency Contacts List"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "children": [
+              {
+                "id": "contactName",
+                "type": "text",
+                "label": {
+                  "en": "Contact Name"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "validators": {
+                  "required": true
+                }
+              },
+              {
+                "id": "relationship",
+                "type": "text",
+                "label": {
+                  "en": "Relationship"
+                },
+                "visibility": true,
+                "colSpan": 3
+              },
+              {
+                "id": "phoneNumber",
+                "type": "text",
+                "label": {
+                  "en": "Phone Number"
+                },
+                "visibility": true,
+                "colSpan": 3
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "securityAndRulesTab",
+        "label": {
+          "en": "RBAC Masking & Critical Fields"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "executiveSalary",
+            "type": "number",
+            "label": {
+              "en": "Executive Salary (RBAC Masked)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "maskData": true,
+            "permissions": {
+              "view": [
+                "admin",
+                "manager"
+              ],
+              "edit": [
+                "admin"
+              ],
+              "delete": [
+                "admin"
+              ],
+              "detailedView": [
+                "admin",
+                "manager"
+              ]
+            }
+          },
+          {
+            "id": "taxIdNumber",
+            "type": "text",
+            "label": {
+              "en": "Tax Identifier (Critical Field)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "criticalField": true
+          }
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "id": "rule_hide_notes_if_inactive",
+        "formConfigId": "complexFullTest",
+        "fieldId": "accountActive",
+        "enabled": true,
+        "priority": 1,
+        "conditions": [
+          {
+            "operator": "EQUAL",
+            "value": false,
+            "compareType": "value"
+          }
+        ],
+        "action": {
+          "type": "visibility",
+          "value": false
+        },
+        "targets": [
+          {
+            "id": "bioNotes",
+            "type": "field"
+          }
+        ]
+      },
+      {
+        "id": "rule_warn_high_budget",
+        "formConfigId": "complexFullTest",
+        "fieldId": "annualBudget",
+        "enabled": true,
+        "priority": 2,
+        "conditions": [
+          {
+            "operator": "MORE_THAN",
+            "value": 5000000,
+            "compareType": "value"
+          }
+        ],
+        "action": {
+          "type": "info",
+          "severity": "warning",
+          "value": "Budget exceeds $5,000,000 threshold. Board approval required."
+        },
+        "targets": [
+          {
+            "id": "annualBudget",
+            "type": "field"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "entity": "clients",
+    "version": 1,
+    "name": {
+      "en": "Clients Catalog",
+      "de": "Kundenkatalog"
+    },
+    "isSystemDefined": true,
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "viewer",
+        "IT_SUPPORT"
+      ],
+      "edit": [
+        "admin",
+        "manager"
+      ],
+      "delete": [
+        "admin"
+      ],
+      "detailedView": [
+        "admin",
+        "manager",
+        "viewer"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "primaryDetails",
+        "label": {
+          "en": "General Info",
+          "de": "Allgemeine Info"
+        },
+        "visibility": true,
+        "systemDefault": true,
+        "isPrimaryTab": true,
+        "fields": [
+          {
+            "id": "name",
+            "type": "text",
+            "label": {
+              "en": "Client Name",
+              "de": "Kundenname"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true,
+              "minLength": 2
+            }
+          },
+          {
+            "id": "email",
+            "type": "text",
+            "label": {
+              "en": "Email Address",
+              "de": "E-Mail-Adresse"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true,
+              "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+            }
+          },
+          {
+            "id": "company",
+            "type": "text",
+            "label": {
+              "en": "Company Name",
+              "de": "Firmenname"
+            },
+            "visibility": true,
+            "colSpan": 6
+          },
+          {
+            "id": "status",
+            "type": "dropdown",
+            "label": {
+              "en": "Status",
+              "de": "Status"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "options": [
+              {
+                "value": "Active",
+                "label": {
+                  "en": "Active",
+                  "de": "Aktiv"
+                }
+              },
+              {
+                "value": "Inactive",
+                "label": {
+                  "en": "Inactive",
+                  "de": "Inaktiv"
+                }
+              },
+              {
+                "value": "Pending",
+                "label": {
+                  "en": "Pending",
+                  "de": "Ausstehend"
+                }
+              }
+            ]
+          },
+          {
+            "id": "salary",
+            "type": "number",
+            "label": {
+              "en": "Annual Revenue / Salary"
+            },
+            "visibility": true,
+            "maskData": true,
+            "colSpan": 6,
+            "permissions": {
+              "view": [
+                "admin",
+                "manager"
+              ],
+              "edit": [
+                "admin"
+              ],
+              "delete": [
+                "admin"
+              ],
+              "detailedView": [
+                "admin",
+                "manager"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "entity": "employees",
+    "version": 1,
+    "name": {
+      "en": "Employees Roster"
+    },
+    "isSystemDefined": true,
+    "permissions": {
+      "view": [
+        "admin",
+        "manager"
+      ],
+      "edit": [
+        "admin"
+      ],
+      "delete": [
+        "admin"
+      ],
+      "detailedView": [
+        "admin",
+        "manager"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "personalInfo",
+        "label": {
+          "en": "Personal Info"
+        },
+        "visibility": true,
+        "systemDefault": true,
+        "isPrimaryTab": true,
+        "fields": [
+          {
+            "id": "firstName",
+            "type": "text",
+            "label": {
+              "en": "First Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "lastName",
+            "type": "text",
+            "label": {
+              "en": "Last Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "department",
+            "type": "dropdown",
+            "label": {
+              "en": "Department"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "options": [
+              {
+                "value": "Engineering",
+                "label": {
+                  "en": "Engineering"
+                }
+              },
+              {
+                "value": "Sales",
+                "label": {
+                  "en": "Sales"
+                }
+              },
+              {
+                "value": "HR",
+                "label": {
+                  "en": "HR"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "entity": "organizations",
+    "version": 1,
+    "name": {
+      "en": "Organizations Directory"
+    },
+    "isSystemDefined": true,
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "viewer"
+      ],
+      "edit": [
+        "admin"
+      ],
+      "delete": [
+        "admin"
+      ],
+      "detailedView": [
+        "admin",
+        "manager"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "orgInfo",
+        "label": {
+          "en": "Organization Details"
+        },
+        "visibility": true,
+        "systemDefault": true,
+        "isPrimaryTab": true,
+        "fields": [
+          {
+            "id": "orgName",
+            "type": "text",
+            "label": {
+              "en": "Organization Name"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "website",
+            "type": "text",
+            "label": {
+              "en": "Website"
+            },
+            "visibility": true,
+            "colSpan": 6
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "entity": "visitNotes",
+    "version": 1,
+    "name": {
+      "en": "Clinical Visit Notes"
+    },
+    "isSystemDefined": true,
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "viewer"
+      ],
+      "edit": [
+        "admin",
+        "manager"
+      ],
+      "delete": [
+        "admin"
+      ],
+      "detailedView": [
+        "admin",
+        "manager",
+        "viewer"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "visitSummaryTab",
+        "label": {
+          "en": "Visit Summary"
+        },
+        "visibility": true,
+        "systemDefault": true,
+        "isPrimaryTab": true,
+        "fields": [
+          {
+            "id": "patientName",
+            "type": "text",
+            "label": {
+              "en": "Patient Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "visitDate",
+            "type": "date",
+            "label": {
+              "en": "Visit Date"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "diagnosisNotes",
+            "type": "textarea",
+            "label": {
+              "en": "Clinical Diagnosis & Notes"
+            },
+            "visibility": true,
+            "colSpan": 12
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "entity": "insuranceClaims",
+    "version": 2,
+    "name": {
+      "en": "Insurance Claims",
+      "de": "Versicherungsansprüche"
+    },
+    "defaultLanguage": "en",
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "viewer",
+        "IT_SUPPORT"
+      ],
+      "edit": [
+        "admin",
+        "manager"
+      ],
+      "delete": [
+        "admin"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "claimant",
+        "label": {
+          "en": "Claimant",
+          "de": "Anspruchsteller"
+        },
+        "visibility": true,
+        "isPrimaryTab": true,
+        "flatData": true,
+        "fields": [
+          {
+            "id": "claimRef",
+            "type": "text",
+            "label": {
+              "en": "Claim Reference",
+              "de": "Schadennummer"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "criticalField": true,
+            "validators": {
+              "required": true,
+              "minLength": 4,
+              "maxLength": 24
+            },
+            "table": {
+              "visible": true,
+              "isName": true
+            },
+            "showOnMinimize": true
+          },
+          {
+            "id": "claimantEmail",
+            "type": "email",
+            "label": {
+              "en": "Claimant Email"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "required": true,
+              "email": true
+            }
+          },
+          {
+            "id": "nationalId",
+            "type": "text",
+            "label": {
+              "en": "National Insurance No."
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "maskData": true,
+            "validators": {
+              "pattern": "^[A-Z]{2}[0-9]{6}[A-Z]$"
+            }
+          },
+          {
+            "id": "tier",
+            "type": "dropdown",
+            "label": {
+              "en": "Client Tier"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "listName": "clientTier"
+          },
+          {
+            "id": "isEmployee",
+            "type": "boolean",
+            "label": {
+              "en": "Staff Member?"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "defaultValue": false
+          },
+          {
+            "id": "staffId",
+            "type": "text",
+            "label": {
+              "en": "Staff Id"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "showWhen": {
+              "isEmployee": true
+            },
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "copyRefToPolicy",
+            "type": "checkbox",
+            "label": {
+              "en": "Reuse reference as policy note"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "defaultValue": false,
+            "patchOnTrue": [
+              {
+                "from": "claimRef",
+                "to": "policyNote"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "policy",
+        "label": {
+          "en": "Policy",
+          "de": "Police"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "insurer",
+            "type": "entity-ref",
+            "label": {
+              "en": "Insurer"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "companies",
+              "displayFields": [
+                "name"
+              ]
+            },
+            "autoPatch": {
+              "targetTab": "policy",
+              "mappings": [
+                {
+                  "source": "vat",
+                  "target": "insurerVat"
+                }
+              ]
+            }
+          },
+          {
+            "id": "insurerVat",
+            "type": "text",
+            "label": {
+              "en": "Insurer VAT"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "readonly": true
+          },
+          {
+            "id": "country",
+            "type": "entity-ref",
+            "label": {
+              "en": "Country"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "countries"
+            }
+          },
+          {
+            "id": "city",
+            "type": "entity-ref",
+            "label": {
+              "en": "City"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "cities",
+              "parentField": "country",
+              "lookupFilter": "country"
+            }
+          },
+          {
+            "id": "sumInsured",
+            "type": "currency",
+            "label": {
+              "en": "Sum Insured"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "required": true,
+              "min": 0,
+              "max": 10000000
+            }
+          },
+          {
+            "id": "excess",
+            "type": "number",
+            "label": {
+              "en": "Excess"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "min": 0
+            }
+          },
+          {
+            "id": "coverStart",
+            "type": "monthYear",
+            "label": {
+              "en": "Cover Start"
+            },
+            "visibility": true,
+            "colSpan": 4
+          },
+          {
+            "id": "policyNote",
+            "type": "textarea",
+            "label": {
+              "en": "Policy Note"
+            },
+            "visibility": true,
+            "colSpan": 12
+          },
+          {
+            "id": "syncedClientTier",
+            "type": "text",
+            "label": {
+              "en": "Synced Client Tier (Referenced)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "isReferenced": true,
+            "referencedEntityKey": "clients",
+            "referencedFieldId": "name",
+            "hasDrift": true,
+            "referencedSnapshot": {
+              "label": {
+                "en": "Client Name"
+              },
+              "type": "text",
+              "validators": {
+                "required": true,
+                "minLength": 2
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "incident",
+        "label": {
+          "en": "Incident",
+          "de": "Vorfall"
+        },
+        "visibility": true,
+        "children": [
+          {
+            "id": "incidentDetails",
+            "label": {
+              "en": "Details"
+            },
+            "visibility": true,
+            "fields": [
+              {
+                "id": "incidentDate",
+                "type": "date",
+                "label": {
+                  "en": "Incident Date"
+                },
+                "visibility": true,
+                "colSpan": 4,
+                "validators": {
+                  "required": true
+                }
+              },
+              {
+                "id": "incidentTime",
+                "type": "time",
+                "label": {
+                  "en": "Time of Incident",
+                  "de": "Uhrzeit des Vorfalls"
+                },
+                "visibility": true,
+                "colSpan": 4,
+                "showOnMinimize": true
+              },
+              {
+                "id": "reportedAt",
+                "type": "datetime",
+                "label": {
+                  "en": "Reported At"
+                },
+                "visibility": true,
+                "colSpan": 4
+              },
+              {
+                "id": "severity",
+                "type": "radio",
+                "label": {
+                  "en": "Severity"
+                },
+                "visibility": true,
+                "colSpan": 4,
+                "options": [
+                  {
+                    "en": "Low"
+                  },
+                  {
+                    "en": "Medium"
+                  },
+                  {
+                    "en": "High"
+                  }
+                ]
+              },
+              {
+                "id": "damageTypes",
+                "type": "multiSelect",
+                "label": {
+                  "en": "Damage Types"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "options": [
+                  {
+                    "en": "Fire"
+                  },
+                  {
+                    "en": "Flood"
+                  },
+                  {
+                    "en": "Theft"
+                  },
+                  {
+                    "en": "Impact"
+                  }
+                ]
+              },
+              {
+                "id": "narrative",
+                "type": "textarea",
+                "label": {
+                  "en": "What happened"
+                },
+                "visibility": true,
+                "colSpan": 12,
+                "validators": {
+                  "maxLength": 2000
+                }
+              },
+              {
+                "id": "location",
+                "type": "group",
+                "label": {
+                  "en": "Location"
+                },
+                "visibility": true,
+                "colSpan": 12,
+                "children": [
+                  {
+                    "id": "street",
+                    "type": "text",
+                    "label": {
+                      "en": "Street"
+                    },
+                    "visibility": true,
+                    "colSpan": 6
+                  },
+                  {
+                    "id": "postcode",
+                    "type": "text",
+                    "label": {
+                      "en": "Postcode"
+                    },
+                    "visibility": true,
+                    "colSpan": 3
+                  },
+                  {
+                    "id": "locality",
+                    "type": "text",
+                    "label": {
+                      "en": "Town"
+                    },
+                    "visibility": true,
+                    "colSpan": 3
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "incidentAttachments",
+            "label": {
+              "en": "Attachments"
+            },
+            "visibility": true,
+            "fields": [
+              {
+                "id": "claimantPhoto",
+                "type": "image",
+                "label": {
+                  "en": "Claimant Photo"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "isProfileImage": true
+              },
+              {
+                "id": "lossReport",
+                "type": "file",
+                "label": {
+                  "en": "Loss Adjuster Report (PDF)"
+                },
+                "visibility": true,
+                "colSpan": 6
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "settlement",
+        "label": {
+          "en": "Settlement"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "lineItems",
+            "type": "array",
+            "label": {
+              "en": "Settlement Line Items"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "children": [
+              {
+                "id": "itemDescription",
+                "type": "text",
+                "label": {
+                  "en": "Description"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "validators": {
+                  "required": true
+                },
+                "table": {
+                  "arrayVisible": true
+                }
+              },
+              {
+                "id": "itemAmount",
+                "type": "currency",
+                "label": {
+                  "en": "Amount"
+                },
+                "visibility": true,
+                "colSpan": 3,
+                "validators": {
+                  "required": true,
+                  "min": 0
+                },
+                "table": {
+                  "arrayVisible": true
+                }
+              },
+              {
+                "id": "itemApproved",
+                "type": "boolean",
+                "label": {
+                  "en": "Approved"
+                },
+                "visibility": true,
+                "colSpan": 3,
+                "defaultValue": false
+              }
+            ]
+          },
+          {
+            "id": "settlementTotal",
+            "type": "currency",
+            "label": {
+              "en": "Settlement Total"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "min": 0
+            },
+            "showOnMinimize": true
+          },
+          {
+            "id": "auditorPin",
+            "type": "password",
+            "label": {
+              "en": "Auditor PIN"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "maskData": true
+          }
+        ]
+      },
+      {
+        "id": "claimDocuments",
+        "label": {
+          "en": "Documents"
+        },
+        "visibility": true,
+        "moduleName": "documents-view"
+      }
+    ]
+  },
+  {
+    "entity": "people",
+    "version": 1,
+    "name": {
+      "en": "People",
+      "de": "Personen"
+    },
+    "defaultLanguage": "en",
+    "permissions": {
+      "canView": [
+        "admin",
+        "manager",
+        "viewer"
+      ],
+      "canEdit": [
+        "admin",
+        "manager"
+      ],
+      "canCreate": [
+        "admin",
+        "manager"
+      ],
+      "canDelete": [
+        "admin"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "personal",
+        "label": {
+          "en": "Personal Details",
+          "de": "Persönliche Daten"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "fullName",
+            "type": "text",
+            "label": {
+              "en": "Full Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "address",
+            "type": "text",
+            "label": {
+              "en": "Address"
+            },
+            "visibility": true,
+            "colSpan": 6
+          }
+        ]
+      },
+      {
+        "id": "work",
+        "label": {
+          "en": "Work Details",
+          "de": "Arbeitsdaten"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "address",
+            "type": "text",
+            "label": {
+              "en": "Address"
+            },
+            "visibility": true,
+            "colSpan": 6
+          },
+          {
+            "id": "deskNumber",
+            "type": "text",
+            "label": {
+              "en": "Desk Number"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "showWhen": {
+              "[work.address]": "HQ"
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

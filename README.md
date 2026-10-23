@@ -566,7 +566,7 @@ The plugin creates `{ model: 1, docId: 1, at: -1, _id: -1 }` and a sparse `{ imp
 | `collection` | `audit_trail` | |
 | `many`, `maxMany` | `false`, 1,000 | Record `updateMany` and `deleteMany` |
 | `snapshots` | `false` | Also store the document before each update. Creates and deletes already carry the whole document |
-| `captureOnLoad` | `true` | Keep the loaded raw document for `save()` |
+| `captureOnLoad` | `true` | Keep the loaded raw document for `save()`. `false` for loose schemas: see below |
 | `background` | `false` | |
 | `auditTimeoutMS` | 2,000 | |
 | `logger` | `console` | |
@@ -587,6 +587,7 @@ const adapters = Object.fromEntries(Object.entries(configs).map(([entity, config
 
 const recordSchema = new mongoose.Schema({ entity: String }, { strict: false });
 recordSchema.plugin(auditTrail, {
+  captureOnLoad: false, // a loose schema: see below
   diff(before, after) {
     const { entity } = after ?? before;
     return diffEntityRecords(before, after, configs[entity], { adapter: adapters[entity], migrations: migrations[entity] });
@@ -598,6 +599,8 @@ await Record.history(id, { language: 'de' }); // the same sentences as describeE
 ```
 
 With `snapshots: true`, the snapshot is the `before` of the `RECORD_DELETED` change that `diff(before, null)` returns, so it is stripped the way the diff strips a delete.
+
+**Use `captureOnLoad: false` for a loose schema** (`strict: false`, or mostly `Mixed`). Mongoose shares the raw values of fields its schema doesn't describe with the document it loads, so the plugin copies them on load. With a loose schema, that means copying almost the whole document. A `find()` of 10,000 Dynamic Entity records with 50-row arrays held 350 MB with `captureOnLoad: true`, against 228 MB without the plugin. With `false`, it held the same 228 MB, and `save()` reads its before value from the database instead, one extra read per save. A typed schema copies only its `Mixed` values: 1,076 MB against 899 MB for the same records.
 
 ### Moving from mongoose-audit
 

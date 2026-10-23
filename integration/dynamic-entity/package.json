@@ -1,0 +1,26 @@
+{
+  "name": "audit-trail-text-integration-dynamic-entity",
+  "private": true,
+  "description": "Integration test: the audit-trail-text Mongoose plugin with Dynamic Entity. Not part of the published package.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"test/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "bench": "node --expose-gc bench/bench.ts",
+    "refresh-fixtures": "node scripts/refresh-fixtures.mjs"
+  },
+  "dependencies": {
+    "@dynamic-entity/core": "3.3.1",
+    "audit-trail-text": "file:../.."
+  },
+  "devDependencies": {
+    "audit-trail-text-1.2": "npm:audit-trail-text@1.2.0",
+    "fast-check": "^4.10.2",
+    "mongodb-memory-server": "^11.3.0",
+    "mongoose": "^8.24.6",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "audit-trail-text": "$audit-trail-text"
+  }
+}

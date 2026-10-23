@@ -1,0 +1,31 @@
+{
+  "repo": "berserker5619/Dynamic-Entity",
+  "tag": "v3.3.1",
+  "commit": "0a9728c93580e8bf2a56f10841d5904e08dc230a",
+  "files": {
+    "seed-enterprise.ts": {
+      "from": "packages/demo-angular/src/app/mock/seed-enterprise.ts",
+      "sha256": "aef0a3155848d054681cbe3aef2a1efbadb007de221e904a4b22e3bfa80f195d"
+    },
+    "seed-records.ts": {
+      "from": "packages/demo-angular/src/app/mock/seed-records.ts",
+      "sha256": "e7e3dc9a7079b95ce3974cce629ff0d9f38f6cf9c703e650041789bc5e749b58"
+    },
+    "demo-rules.ts": {
+      "from": "packages/demo-angular/src/app/mock/demo-rules.ts",
+      "sha256": "5b64a44e8e9caf6a8bab1bec69d7660643cbc4a605bbfd22a94556ffdb57b662"
+    },
+    "configs/patient-intake.json": {
+      "from": "packages/demo-angular/src/app/mock/configs/patient-intake.json",
+      "sha256": "17caa4beec128e8b0ea80842b706c90aba09a844f311701d37db9cccc1355b2d"
+    },
+    "configs/it-assets.json": {
+      "from": "packages/demo-angular/src/app/mock/configs/it-assets.json",
+      "sha256": "03569baaaf91b6160cba3952da212082e213df9a4996d2641cef2ff495110b19"
+    },
+    "test_data.json": {
+      "from": "test_data.json",
+      "sha256": "1d562d6d5405cfcae03b573727219df9f16031925b2065bb890544253d182617"
+    }
+  }
+}
