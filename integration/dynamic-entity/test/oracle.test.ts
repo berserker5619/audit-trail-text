@@ -18,7 +18,9 @@ import { recordShape } from '../harness/shape.ts';
 
 const RUNS = Number(process.env['DE_RUNS'] ?? 2000);
 // DE_ONLY=entity,entity runs only those configs, so CI can split the suite across jobs.
-const ONLY = process.env['DE_ONLY']?.split(',').filter(Boolean);
+// Unset or empty: every config.
+const only = process.env['DE_ONLY']?.split(',').filter(Boolean) ?? [];
+const ONLY = only.length > 0 ? only : undefined;
 const { conn } = await replicaSet();
 const w = world(mongoose, conn, { db: 'oracle' });
 
