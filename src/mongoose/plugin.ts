@@ -890,7 +890,12 @@ async function afterOne(state: QueryState, res: Any, cfg: Config): Promise<void>
   // read after the write could already hold another writer's change.
   const returned = state.returnsAfter ? returnedDocument(res) : undefined;
   if (returned) {
-    const after = json(model, returned, cfg);
+    // The raw document the server returned, as Mongoose loaded it, so the after value is what is
+    // stored, without Mongoose's defaults. With captureOnLoad: false it isn't kept: both versions
+    // are then read the way Mongoose reads them, so defaults compare alike.
+    const hydrated = typeof returned.$__ === 'object';
+    const raw = hydrated ? captured.get(returned)?.raw : returned;
+    const after = json(model, raw ?? returned, cfg);
     if (!after.info || !after.value) return;
     // The returned document leaves out `select: false` paths: read just those. Only they can
     // still show another writer's change, and their values are never stored.
@@ -909,8 +914,7 @@ async function afterOne(state: QueryState, res: Any, cfg: Config): Promise<void>
         return;
       }
     }
-    const hydrated = typeof returned.$__ === 'object';
-    const before = hydrated ? hydratedJson(model, state.before, cfg) : json(model, state.before, cfg).value;
+    const before = raw ? json(model, state.before, cfg).value : hydratedJson(model, state.before, cfg);
     const job: Job = {
       model: after.model,
       info: after.info,

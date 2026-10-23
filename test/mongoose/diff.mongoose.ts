@@ -79,3 +79,24 @@ test('diff must be a function', () => {
   const schema = new mongoose.Schema({ n: Number });
   assert.throws(() => schema.plugin(auditTrail, { diff: 'diffEntityRecords' } as any), (e: unknown) => e instanceof DiffError && e.code === 'INVALID_OPTION');
 });
+
+test('a returned document reaches the diff as stored, without the defaults Mongoose adds when it loads one', async () => {
+  for (const captureOnLoad of [true, false]) {
+    const calls: { before: any; after: any }[] = [];
+    const schema = new mongoose.Schema({ name: String, tags: [String], level: { type: Number, default: 1 } });
+    schema.plugin(auditTrail, { diff: (before: any, after: any) => (calls.push({ before, after }), diffRecords(before, after, adapters['contact']!)), captureOnLoad, logger: quietLogger() });
+    const M = model(conn, 'Defaults', schema);
+    // Stored without tags or level, as a document written before those fields existed.
+    const { insertedId } = await M.collection.insertOne({ name: 'A' });
+    await M.findOneAndUpdate({ _id: insertedId }, { name: 'B' }, { returnDocument: 'after' });
+    const [call] = calls;
+    if (captureOnLoad) {
+      assert.deepEqual(call!.after, { _id: String(insertedId), name: 'B' }, 'exactly the stored document');
+      assert.deepEqual(call!.before, { _id: String(insertedId), name: 'A' });
+    } else {
+      // Not kept: both versions are read the way Mongoose reads them, defaults on both sides.
+      assert.deepEqual(call!.before, { ...call!.after, name: 'A' });
+    }
+    assert.deepEqual((await entries(M)).map((e) => e.changes.map((c) => [c.before, c.after])), [[['A', 'B']]]);
+  }
+});
