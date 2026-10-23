@@ -191,3 +191,38 @@ test('narrowed filters: a filter matching several documents, with sort, records 
   const res = await Order.updateOne({ _id: { $in: [written._id] }, status: 'paid' }, { customer: 'Z' });
   assert.equal(res.modifiedCount, 1);
 });
+
+test('findOneAndUpdate and findOneAndReplace returning the document after: that document is the after value, not a later read', async () => {
+  // Another writer changes the document on the second findOne during a write: the plugin's
+  // first is its before read; a second would be a read after the write.
+  const schema = orderSchema();
+  let armed = false;
+  let reads = 0;
+  schema.pre('findOne', async function () {
+    if (armed && ++reads === 2) await this.model.collection.updateOne({ _id: this.getFilter()._id }, { $set: { customer: 'Someone else' } });
+  });
+  const Order = model(conn, 'Order', schema);
+  const race = async (write: (id: unknown) => Promise<unknown>) => {
+    const doc = await Order.create({ customer: 'A', status: 'open' });
+    armed = true;
+    reads = 0;
+    try {
+      await write(doc._id);
+    } finally {
+      armed = false;
+    }
+    return (await entries(Order)).filter((e) => e.operation === 'update' && String(e.docId) === String(doc._id));
+  };
+  const statusOnly = [[['Status', 'paid']]];
+  const changes = (es: any[]) => es.map((e) => e.changes.map((c: any) => [c.labels[0], c.after]));
+  assert.deepEqual(changes(await race((id) => Order.findOneAndUpdate({ _id: id }, { status: 'paid' }, { returnDocument: 'after' }))), statusOnly);
+  assert.deepEqual(changes(await race((id) => Order.findOneAndUpdate({ _id: id }, { status: 'paid' }, { new: true, lean: true }))), statusOnly);
+  assert.deepEqual(changes(await race((id) => Order.findOneAndReplace({ _id: id }, { customer: 'A', status: 'paid' }, { returnDocument: 'after', includeResultMetadata: true } as any))), statusOnly);
+  // A select: false path, left out of the returned document, is read on its own: still reported.
+  const secret = await race((id) => Order.findOneAndUpdate({ _id: id }, { status: 'paid', cardToken: 'tok_new' }, { returnDocument: 'after' }));
+  assert.deepEqual(secret.map((e: any) => e.changes.map((c: any) => [c.labels[0], c.redacted ?? c.after])), [[['Status', 'paid'], ['Card Token', true]]]);
+  assert.doesNotMatch(JSON.stringify(secret), /tok_new/);
+  // The control: updateOne returns no document, so the plugin reads after the write and sees the
+  // other writer's change. Exact only inside a transaction.
+  assert.deepEqual(changes(await race((id) => Order.updateOne({ _id: id }, { status: 'paid' }))), [[['Customer', 'Someone else'], ['Status', 'paid']]]);
+});

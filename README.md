@@ -495,6 +495,7 @@ Each write gives at most one entry per document, holding what changed between th
 Not recorded: `bulkWrite`, and writes that bypass Mongoose (the driver, other services, the shell).
 
 - The before read is an ordinary `findOne`, so plugins that add conditions to queries, such as tenancy or soft deletes, apply to it too.
+- The after value is the saved document for `save()`, and the returned document for `findOneAndUpdate` and `findOneAndReplace` with `returnDocument: 'after'`. Other query writes read the document after the write, so outside a transaction, another writer's change in between shows in this entry too. Inside a transaction, every entry is exact.
 - An upsert keeps its own filter: narrowed, a document that stopped matching would be inserted again under the same `_id`.
 - Above `maxMany`, the write runs unaudited and `auditError` is emitted with `stage: 'maxMany'`. Without `many: true`, these writes are skipped with one warning per model.
 - In a transaction, entries are held on the session and written after `commitTransaction()` succeeds, outside the transaction, so a failed audit write can never abort it. On abort they are dropped, and a retried `withTransaction()` callback never adds the failed attempt's entries.

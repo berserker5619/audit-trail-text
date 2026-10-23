@@ -746,6 +746,8 @@ interface QueryState {
   sort: unknown;
   collation: unknown;
   upsert: boolean;
+  /** findOneAndUpdate or findOneAndReplace returning the whole document after the write. */
+  returnsAfter: boolean;
   before?: Any;
   befores?: Any[];
 }
@@ -792,6 +794,10 @@ async function beforeQuery(q: Any, cfg: Config): Promise<void> {
     sort: options.sort,
     collation: options.collation,
     upsert: options.upsert === true,
+    returnsAfter:
+      (op === 'findOneAndUpdate' || op === 'findOneAndReplace') &&
+      (options.returnDocument === 'after' || options.new === true) &&
+      !hasProjection(q, options),
   };
   const operation: Operation = DELETES.has(op) ? 'delete' : 'update';
   try {
@@ -818,6 +824,33 @@ async function beforeQuery(q: Any, cfg: Config): Promise<void> {
     queries.set(q, state);
   } catch (error) {
     report(model, cfg, { model: rootName(model), operation, stage: 'before', error });
+  }
+}
+
+/** Whether a query returns only some fields, so its result can't stand for the whole document. */
+function hasProjection(q: Any, options: Any): boolean {
+  if (options.projection != null || options.fields != null) return true;
+  const p = typeof q.projection === 'function' ? q.projection() : q._fields;
+  return !!p && typeof p === 'object' && Object.keys(p).length > 0;
+}
+
+/** The document a findOneAnd* write returned: hydrated, lean, or inside its result metadata. */
+function returnedDocument(res: Any): Any {
+  if (res == null || typeof res !== 'object') return undefined;
+  if ('value' in res && 'ok' in res) return res.value ?? undefined;
+  return res;
+}
+
+/** A raw document read the way Mongoose reads it, to compare with a document Mongoose returned. */
+function hydratedJson(model: Any, raw: Any, cfg: Config): Json | null {
+  if (raw == null) return null;
+  const m = modelFor(model, raw);
+  const info = infoFor(m, cfg);
+  hydrating++;
+  try {
+    return toJson(m.hydrate(raw), info?.shape);
+  } finally {
+    hydrating--;
   }
 }
 
@@ -850,6 +883,43 @@ async function afterOne(state: QueryState, res: Any, cfg: Config): Promise<void>
     const before = json(model, state.before, cfg);
     if (!before.info) return;
     const job: Job = { model: before.model, info: before.info, operation: 'delete', docId: state.before._id, before: before.value, after: null, who: state.who };
+    await run(job, state.session, state.budget, cfg);
+    return;
+  }
+  // A findOneAnd* write that returns the document after it: that is the after value, exactly. A
+  // read after the write could already hold another writer's change.
+  const returned = state.returnsAfter ? returnedDocument(res) : undefined;
+  if (returned) {
+    const after = json(model, returned, cfg);
+    if (!after.info || !after.value) return;
+    // The returned document leaves out `select: false` paths: read just those. Only they can
+    // still show another writer's change, and their values are never stored.
+    const hidden = after.info.selectFalse.filter((p) => !p.includes('$*') && isPlainPath(after.info!, p));
+    if (hidden.length > 0) {
+      try {
+        let q = model.findOne({ _id: returned._id }).select({ _id: 0, ...Object.fromEntries(hidden.map((p) => [p, 1])) });
+        if (state.session) q = q.session(state.session);
+        const extra = toJson(await state.budget.run(q.lean().exec()), after.info.shape);
+        for (const p of hidden) {
+          const v = getPath(extra, p);
+          if (v !== undefined) setPath(after.value, p, v);
+        }
+      } catch (error) {
+        report(model, cfg, { model: rootName(model), docId: returned._id, operation: state.before ? 'update' : 'create', stage: 'after', error });
+        return;
+      }
+    }
+    const hydrated = typeof returned.$__ === 'object';
+    const before = hydrated ? hydratedJson(model, state.before, cfg) : json(model, state.before, cfg).value;
+    const job: Job = {
+      model: after.model,
+      info: after.info,
+      operation: state.before ? 'update' : 'create',
+      docId: returned._id,
+      before,
+      after: after.value,
+      who: state.who,
+    };
     await run(job, state.session, state.budget, cfg);
     return;
   }
