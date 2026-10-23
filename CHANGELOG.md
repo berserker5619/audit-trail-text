@@ -10,6 +10,7 @@ A Mongoose plugin, in a new server-only entry, and one small core addition. The 
 - Auditing never blocks the app: every failure is emitted as `auditError` on the model (or logged, at most once a minute per model), `auditTimeoutMS` bounds the time added to a write, `background: true` defers the audit write, and `auditFlush()` waits for it.
 - Who and why per query (`audit` option), per document (`$locals.audit`) or per request (`auditContext.run`, nested contexts merge); `skip` records nothing.
 - `describeEntries`, and `history` paging by entry `_id`.
+- Concurrent writes: `save()`, and `findOneAndUpdate`/`findOneAndReplace` returning the document, take that document as the after or before value, so no other writer's change can slip in. On Mongoose 7, `save()` of an existing document is read back instead, because Mongoose 7 stores empty objects its in-memory document leaves out. Inside a transaction every entry is exact. See "Concurrent writes" in the README.
 - `diff`: the app computes the changes, for records another library describes, such as Dynamic Entity's `diffEntityRecords` with a config per document.
 - Moving from mongoose-audit: `importMongooseAudit` (safe to run again, entries carry `importedFrom`) and `historyFromSnapshots`.
 - **Core:** `format: "decimal"` for exact numbers stored as text: "1,234.50", not quoted. `ChangeDisplay.format` may be `"decimal"`.
