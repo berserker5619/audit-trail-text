@@ -15,9 +15,13 @@ const MAX_GZIP_BYTES = 14 * 1024;
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const failures = [];
 
-for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies', 'bundleDependencies']) {
+for (const field of ['dependencies', 'optionalDependencies', 'bundleDependencies']) {
   if (pkg[field] && Object.keys(pkg[field]).length > 0) failures.push(`package.json has ${field}: ${Object.keys(pkg[field]).join(', ')}`);
 }
+// The one peer is Mongoose, for the audit-trail-text/mongoose entry only, and it is optional.
+const peers = Object.keys(pkg.peerDependencies ?? {});
+if (peers.some((p) => p !== 'mongoose')) failures.push(`package.json has peerDependencies other than mongoose: ${peers.join(', ')}`);
+if (peers.includes('mongoose') && pkg.peerDependenciesMeta?.mongoose?.optional !== true) failures.push('the mongoose peer dependency must be optional');
 
 const result = await build({
   entryPoints: [fileURLToPath(new URL('../dist/index.js', import.meta.url))],
@@ -30,10 +34,28 @@ const result = await build({
   logLevel: 'silent',
 });
 
-const outside = Object.keys(result.metafile.inputs).filter((input) => !input.replace(/\\/g, '/').includes('dist/'));
+const inputs = Object.keys(result.metafile.inputs).map((input) => input.replace(/\\/g, '/'));
+const outside = inputs.filter((input) => !input.includes('dist/'));
 if (outside.length) failures.push(`the main entry pulls in files outside dist: ${outside.join(', ')}`);
+const plugin = inputs.filter((input) => input.includes('dist/mongoose/'));
+if (plugin.length) failures.push(`the main entry pulls in the Mongoose plugin: ${plugin.join(', ')}`);
 const code = result.outputFiles[0].text;
 if (/\bfrom\s*["']node:|require\(["']node:/.test(code)) failures.push('the main entry imports a Node built-in');
+if (/["']mongoose["']/.test(code)) failures.push('the main entry refers to mongoose');
+
+// The Mongoose entry never loads Mongoose itself: it works with the schema and models it is given,
+// so it can't load a second copy, and importing it without Mongoose installed still works.
+const mongooseEntry = await build({
+  entryPoints: [fileURLToPath(new URL('../dist/mongoose/index.js', import.meta.url))],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  write: false,
+  metafile: true,
+  logLevel: 'silent',
+});
+const loaded = Object.keys(mongooseEntry.metafile.inputs).filter((input) => !input.replace(/\\/g, '/').includes('dist/'));
+if (loaded.length) failures.push(`the Mongoose entry loads packages: ${loaded.join(', ')}`);
 
 const min = Buffer.byteLength(code);
 const gzip = gzipSync(code).length;

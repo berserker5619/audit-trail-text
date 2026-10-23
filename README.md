@@ -8,6 +8,7 @@ Give it two versions of a record and its JSON Schema, and it tells you what chan
 - Labels in every language: a change keeps them all, and is read in the reader's.
 - Sensitive fields are reported without their values.
 - Changes are plain JSON your app can store, and describe later in any wording or language.
+- A Mongoose plugin, `audit-trail-text/mongoose`, that records every change to a document and reads it back as sentences.
 
 ```sh
 npm install audit-trail-text
@@ -86,6 +87,7 @@ Key an item by what never changes for it, such as an id. A changed key reads as 
 | `title` at the root | Record noun: "Contact created". Default "Record" |
 | `items.title` | Singular name for list items: "Order". Default "Item" |
 | `format: date`, `date-time` | Shown as dates. Date-only values are never shifted by time zone |
+| `format: decimal` | An exact number stored as text, such as `"1234.50"`: shown as a number with every digit kept, "1,234.50", not quoted |
 | `type: number`, `integer` | Shown with locale digits: "1,25,000" in en-IN |
 | `type: boolean` | "Yes" / "No" |
 | `oneOf: [{ const, title }]` | Stored code shown by its label: `active` → "Active customer" |
@@ -417,6 +419,152 @@ describeChanges(
 Sentences name at most `maxParents` enclosing items (default 3): "… › Sleeve › Cuff › Button: Quantity changed from 1 to 2". `labels` always holds the full path; pass `maxParents: Infinity` for whole paths.
 
 The data decides the depth, up to `maxDepth` (default 32): raise it for deep trees. The walk uses no recursion, so a raised `maxDepth` can't overflow the stack. `JSON.stringify` itself fails on values nested a few thousand levels deep, so for very deep trees, store changes with a serializer that handles that depth.
+
+## Mongoose
+
+`audit-trail-text/mongoose` is a Mongoose plugin that records every create, update and delete made through Mongoose, in an audit collection, and reads a document's history back as sentences. It works with Mongoose 7, 8 and 9, which is an optional peer dependency: the main entry never loads it, and the plugin itself never imports Mongoose, so it uses the app's own copy. Server-only.
+
+```js
+import mongoose from 'mongoose';
+import { auditTrail, auditContext } from 'audit-trail-text/mongoose';
+
+const orderSchema = new mongoose.Schema({
+  customer: { type: String, title: 'Customer' },
+  status: { type: String, enum: ['open', 'paid', 'shipped'], title: 'Status' },
+  items: [{ product: { type: String, title: 'Product' }, qty: { type: Number, title: 'Quantity' } }],
+  cardToken: { type: String, select: false }, // recorded as changed, never with its value
+}, { timestamps: true });
+
+orderSchema.plugin(auditTrail, {
+  labels: { '/items#label': '{product}' }, // the same labels file as the core
+});
+
+const Order = mongoose.model('Order', orderSchema);
+
+// Express middleware: who made every change in this request
+app.use((req, res, next) => auditContext.run({ user: req.user?.id }, next));
+
+await Order.findOneAndUpdate({ _id: id }, { $set: { 'items.1.qty': 2, status: 'paid' } });
+
+await Order.history(id, { language: 'en', timeZone: 'Asia/Kolkata' });
+// [{ at: 2026-10-23T09:12:00Z, user: 'u_41', operation: 'update',
+//    sentences: ['Status changed from open to paid', 'Items › Red saree: Quantity changed from 1 to 2'],
+//    changes: [...] }, ...]
+```
+
+### What it reads from the Mongoose schema
+
+The plugin turns each model's schema into a JSON Schema, once, and hands it to `jsonSchemaAdapter` with the plugin's `labels`, so list keys, item names and value labels follow the rules above. `mongooseSchemaAdapter(schema, { labels, title })` is exported for apps that diff documents themselves.
+
+| Mongoose | Treated as |
+| --- | --- |
+| `String`, `Number`, `Boolean` | Text, number, Yes/No |
+| `enum` | A stored code, labelled from the labels file: `"/status=paid": "Paid"` |
+| `Date` | A date-time in the reader's time zone; `auditFormat: 'date'` on the path for a date only |
+| `ObjectId` | Its id as text. Populated documents are stored as their id |
+| `Decimal128`, `BigInt` | An exact number (`format: decimal`): "1,234.50" |
+| `Buffer` | Compared by its bytes, reported as changed without its value |
+| `Mixed` | One value, compared whole, even when edited in place |
+| `Map` | One change per key |
+| Nested path, single subdocument | A nested object |
+| Array of subdocuments | A list keyed by `_id`; named by `#label` in the labels file, else its id |
+| Array of plain values | Compared by value, counting duplicates |
+| A schema that contains itself | A tree, to any depth |
+| Discriminators | Each document uses its own discriminator's schema |
+
+Options read from a path:
+
+- `title`: the field's name, as text or a language map (`{ en: 'Status', de: 'Zustand' }`). Without one, the key in Title Case.
+- `auditSensitive: true`: recorded as changed, never with its value. Paths with `select: false` are sensitive too; the plugin's own reads ask for them (`+path`) so a change is still seen, then the value is stripped.
+- `auditIgnore: true`: never recorded. `__v` and the schema's `timestamps` are always ignored, and virtuals and getters never recorded: values are read with `toObject({ depopulate, flattenMaps, virtuals: false, getters: false, transform: false })`, so a schema's own `toObject.transform` changes nothing.
+
+A list of subdocuments with `_id: false` has no key unless the labels file names one (`"/lines#key": "sku"`). `mongooseSchemaAdapter` refuses it with `LIST_KEY_MISSING`; the plugin logs that once, when the model is compiled, and records the list as one whole value.
+
+### What is recorded
+
+Each write gives at most one entry per document, holding what changed between the document before and after. A write that changes nothing recordable gives none.
+
+| Write | Before value | Recorded as |
+| --- | --- | --- |
+| `doc.save()`, new document; `Model.create()`; `insertMany()` | — | `create`, one per document; with `ordered: false`, only those inserted |
+| `doc.save()`, existing document | The raw document Mongoose loaded, kept by reference (`captureOnLoad: false` reads it from the database instead) | `update` |
+| `findOneAndUpdate`, `findOneAndReplace`, `updateOne`, `replaceOne` | A read just before the write, in its session, with its `sort` and `collation`. The write's filter is then narrowed to that document's `_id`, so the entry describes the document actually written | `update`, or `create` when an upsert inserts |
+| `findOneAndDelete`, `deleteOne` (query or document) | The same read and narrowing | `delete` |
+| `updateMany`, `deleteMany` | A read of every matching document | Only with `many: true`, up to `maxMany` (1,000) documents |
+
+Not recorded: `bulkWrite`, and writes that bypass Mongoose (the driver, other services, the shell).
+
+- The before read is an ordinary `findOne`, so plugins that add conditions to queries, such as tenancy or soft deletes, apply to it too.
+- An upsert keeps its own filter: narrowed, a document that stopped matching would be inserted again under the same `_id`.
+- Above `maxMany`, the write runs unaudited and `auditError` is emitted with `stage: 'maxMany'`. Without `many: true`, these writes are skipped with one warning per model.
+- In a transaction, entries are held on the session and written after `commitTransaction()` succeeds, outside the transaction, so a failed audit write can never abort it. On abort they are dropped, and a retried `withTransaction()` callback never adds the failed attempt's entries.
+- A `select: false` field changed on a document loaded without it: just that field is read before the save. This works for fields outside lists.
+
+### Never blocks the app
+
+No failure in the plugin reaches the app: its write runs as usual and returns its normal result. Failures are emitted on the model as `auditError`, `{ model, docId, operation, stage, error, entry? }`, with `stage` one of `schema`, `before`, `diff`, `after`, `write` or `maxMany`. A failed audit write carries the `entry`, so the app can retry it or store it elsewhere. Without a listener, the plugin logs through `logger` (default `console`), at most one line per model per minute. No option makes audit failures throw.
+
+`auditTimeoutMS` (default 2,000) bounds what the plugin adds to one write: the before read, the after read and the audit write together. With `background: true`, the after read and the audit write run after the app's call returns; the before read still runs first. `await auditFlush()` waits for pending entries, for tests and shutdown.
+
+### Who and why
+
+Most specific first:
+
+1. Per query: `{ audit: { user, reason } }` in the query's options, or `query.setOptions({ audit })`.
+2. Per document: `doc.$locals.audit = { user, reason }` before `doc.save()` or `doc.deleteOne()`.
+3. Per request: `auditContext.run({ user, reason }, fn)`, through Node's `AsyncLocalStorage`. Everything inside `fn` is attributed, including awaited calls; a query returned by `fn` is executed inside it. An inner `run` adds to the outer one.
+
+`user` is any JSON-safe value, stored as given. `{ audit: { skip: true } }` or `auditContext.run({ skip: true }, fn)` records nothing, for migrations and seed scripts.
+
+### Reading history
+
+```js
+const page = await Order.history(id, { limit: 50, language: 'de' });
+const next = await Order.history(id, { after: page.at(-1)._id });
+```
+
+Entries come newest first, each with `sentences`. `history` takes the `describe` options, `limit` (default 50), `after` (the `_id` of the last entry shown: many entries can share one `at`, so paging never uses dates) and `session`. `historyMethod` renames the static; when the schema already has one of that name, the plugin leaves it alone and warns. In TypeScript, cast the model: `Order as typeof Order & AuditedModel`.
+
+All models on a connection share one collection, `audit_trail` (option `collection`):
+
+```ts
+interface AuditEntry {
+  _id: ObjectId;
+  model: string;          // "Order"; a discriminator's base model
+  docId: unknown;         // the document's _id
+  operation: 'create' | 'update' | 'delete';
+  at: Date;
+  user?: unknown;
+  reason?: string;
+  changes: Change[];      // stand-alone: old entries read the same after the schema changes
+  snapshot?: object;      // with snapshots: true, the document before an update, stripped
+  importedFrom?: unknown; // the mongoose-audit log entry it came from
+  v: 1;
+}
+```
+
+The plugin creates `{ model: 1, docId: 1, at: -1, _id: -1 }` and a sparse `{ importedFrom: 1 }`, following the connection's `autoIndex`. To look up changes by person, add `{ user: 1, at: -1 }` yourself and describe what you find with `describeEntries(entries, options)`.
+
+| Option | Default | |
+| --- | --- | --- |
+| `labels`, `strictLabels` | | The labels file, as for `jsonSchemaAdapter` |
+| `collection` | `audit_trail` | |
+| `many`, `maxMany` | `false`, 1,000 | Record `updateMany` and `deleteMany` |
+| `snapshots` | `false` | Also store the document before each update. Creates and deletes already carry the whole document |
+| `captureOnLoad` | `true` | Keep the loaded raw document for `save()` |
+| `background` | `false` | |
+| `auditTimeoutMS` | 2,000 | |
+| `logger` | `console` | |
+| `historyMethod` | `history` | |
+
+### Moving from mongoose-audit
+
+mongoose-audit 1.0 logs to an `auditlog` collection, `{ ts, operation, location, document, user }`. It logs in `pre('save')`, so the `document` of a `create` or `update` entry is the document after that change; a `delete` entry holds the document as it was. Each update is therefore diffed with the entry before it and keeps its own `ts` and `user`. A log that starts with an update (the document predates mongoose-audit) uses that version as the starting point, with no entry of its own. Bulk entries, which carry a `selector` instead of a document, and mongoose-audit's own fields `_createdAt`, `_updatedAt` and `_user` are skipped.
+
+- `importMongooseAudit(Order, { from: 'auditlog' })` converts a model's log once into normal entries, oldest first, each with `importedFrom`, and returns `{ read, imported, skipped, failed }`. Running it again skips what it already imported. The old collection is only read.
+- `historyFromSnapshots(log, adapter, { model })` reads one document's log entries as history without converting them.
+
+Remove mongoose-audit's plugin, add this one, then run the import; both on one schema at once is not supported. Old documents are diffed with today's schema, so a field since removed reads with its key in Title Case and `inSchema: false`. Apps still on Mongoose 6 or older upgrade to 7 first.
 
 ## Rendering
 

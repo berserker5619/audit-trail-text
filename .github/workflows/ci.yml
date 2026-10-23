@@ -54,6 +54,31 @@ jobs:
         env:
           TZ: ${{ matrix.tz }}
 
+  # The Mongoose plugin against a real database (an in-memory replica set, so sessions and
+  # transactions are real), on every Mongoose major it supports.
+  mongoose:
+    name: Mongoose ${{ matrix.mongoose }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mongoose: [7, 8, 9]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Mongoose ${{ matrix.mongoose }}
+        run: |
+          npm install --no-save --no-audit --no-fund mongoose@${{ matrix.mongoose }}
+          VERSION=$(node -p "require('mongoose/package.json').version")
+          echo "Mongoose $VERSION"
+          case "$VERSION" in ${{ matrix.mongoose }}.*) ;; *) echo "::error::expected Mongoose ${{ matrix.mongoose }}, got $VERSION"; exit 1 ;; esac
+      - name: Mongoose tests
+        run: npm run test:mongoose
+
   # The package promises Node >= 18. Tests run TypeScript directly and need a newer Node, so the
   # built output is checked on the oldest supported Node instead.
   oldest-node:

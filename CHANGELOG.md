@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 (unreleased)
+
+A Mongoose plugin, in a new server-only entry, and one small core addition. The main entry, its zero dependencies and its stored changes are unchanged.
+
+- **`audit-trail-text/mongoose`**: `auditTrail`, a Mongoose plugin for Mongoose 7, 8 and 9 that records creates, updates and deletes made through Mongoose as audit-trail-text changes in an `audit_trail` collection, and a `history` static that reads them back as sentences. Covers `save`, `create`, `insertMany` (including partly failed `ordered: false` inserts), `findOneAndUpdate`, `findOneAndReplace`, `updateOne`, `replaceOne`, `findOneAndDelete`, `deleteOne` on queries and documents, upserts, and with `many: true`, `updateMany` and `deleteMany` up to `maxMany`. Single-document query writes are narrowed to the document read before them; upserts keep their filter.
+- The schema is read into a JSON Schema for `jsonSchemaAdapter`, with the same labels file: subdocument lists keyed by `_id`, `Map`, `Mixed`, `Decimal128`, `Buffer`, discriminators, recursive schemas, `title`, `auditSensitive`, `auditIgnore` and `auditFormat` on paths, `select: false` treated as sensitive. `mongooseSchemaAdapter` is exported.
+- Transactions: entries are held on the session, written after the commit and dropped on abort; a retried `withTransaction` never duplicates them.
+- Auditing never blocks the app: every failure is emitted as `auditError` on the model (or logged, at most once a minute per model), `auditTimeoutMS` bounds the time added to a write, `background: true` defers the audit write, and `auditFlush()` waits for it.
+- Who and why per query (`audit` option), per document (`$locals.audit`) or per request (`auditContext.run`, nested contexts merge); `skip` records nothing.
+- `describeEntries`, and `history` paging by entry `_id`.
+- Moving from mongoose-audit: `importMongooseAudit` (safe to run again, entries carry `importedFrom`) and `historyFromSnapshots`.
+- **Core:** `format: "decimal"` for exact numbers stored as text: "1,234.50", not quoted. `ChangeDisplay.format` may be `"decimal"`.
+- `mongoose` is an optional peer dependency (`^7 || ^8 || ^9`). The plugin never imports it.
+
 ## 1.2.0 (2026-10-22)
 
 Trees of any depth, objects compared as one value, labels in every language, and moves across parents, so the package can describe Dynamic Entity records and forms. Everything is opt-in or only triggers on schemas 1.1 refused. Changes stored by 1.0 and 1.1 describe as before, except a sentence with more than three enclosing items, which now starts with "…" (see `maxParents`).

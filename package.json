@@ -11,7 +11,9 @@
     "json-schema",
     "changelog",
     "history",
-    "change-tracking"
+    "change-tracking",
+    "mongoose",
+    "mongoose-plugin"
   ],
   "homepage": "https://github.com/berserker5619/audit-trail-text#readme",
   "bugs": {
@@ -29,6 +31,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./mongoose": {
+      "types": "./dist/mongoose/index.d.ts",
+      "default": "./dist/mongoose/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -44,18 +50,29 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.mongoose.json",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "node --test \"test/**/*.test.ts\"",
     "check:bundle": "node scripts/check-bundle.mjs",
     "golden:update": "node test/golden.test.ts --update",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:bundle"
+    "prepublishOnly": "npm run typecheck && npm test && npm run test:mongoose && npm run build && npm run check:bundle",
+    "test:mongoose": "node --test \"test/mongoose/*.mongoose.ts\""
+  },
+  "peerDependencies": {
+    "mongoose": "^7 || ^8 || ^9"
+  },
+  "peerDependenciesMeta": {
+    "mongoose": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.5",
     "esbuild": "^0.28.2",
     "jsdom": "^30.1.3",
+    "mongodb-memory-server": "^11.3.0",
+    "mongoose": "^9.11.3",
     "typescript": "^7.0.2"
   }
 }

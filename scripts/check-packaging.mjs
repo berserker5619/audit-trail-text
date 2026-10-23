@@ -58,6 +58,14 @@ check('ESM import, this Node', true, () => sh('node index.js', esm).trim());
 check('CommonJS require, this Node', true, () => sh('node index.js', cjs).trim());
 check('CommonJS require, Node 18', true, () => sh('npx -y -p node@18 node index.js', cjs).trim());
 check('ESM import, Node 18', true, () => sh('npx -y -p node@18 node index.js', esm).trim());
+// The Mongoose entry never loads Mongoose itself, so it imports in a project without it.
+check('ESM import of audit-trail-text/mongoose, without Mongoose installed', true, () => {
+  writeFileSync(join(esm, 'plugin.js'), `import { auditTrail, auditContext } from 'audit-trail-text/mongoose';
+if (typeof auditTrail !== 'function' || typeof auditContext.run !== 'function') throw new Error('missing exports');
+console.log('plugin entry loads');
+`);
+  return sh('node plugin.js', esm).trim();
+});
 
 // TypeScript consumers, strict, without skipLibCheck so the package's own .d.ts files are checked.
 const tsUse = `import { jsonSchemaAdapter, diffRecords, describe, type Change, type Sentence } from 'audit-trail-text';
@@ -65,6 +73,11 @@ const adapter = jsonSchemaAdapter({ type: 'object', properties: { phone: { type:
 const changes: Change[] = diffRecords({ phone: '1' }, { phone: '2' }, adapter);
 const sentences: Sentence[] = describe(changes, { locale: 'en-IN', translateLabel: (l, { kind }) => kind + l });
 export const first: string | undefined = sentences[0]?.text;
+import { auditTrail, type AuditEntry, type AuditTrailOptions } from 'audit-trail-text/mongoose';
+const options: AuditTrailOptions = { labels: { '/items#label': '{product}' }, many: true };
+export const plugin: (schema: unknown, options?: AuditTrailOptions) => void = auditTrail;
+export type Entry = AuditEntry;
+export { options };
 `;
 const tsConfigs = {
   'node16 (ESM package)': { pkg: { type: 'module' }, options: { module: 'node16', moduleResolution: 'node16' } },

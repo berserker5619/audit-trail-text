@@ -301,6 +301,8 @@ function visible(text: string): string {
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 // An offset is required: without one, Date.parse would read the machine's time zone.
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
+// As Decimal128 writes numbers: "-12.50", "1.5E+3".
+const DECIMAL = /^([+-])?(\d+)(?:\.(\d+))?(?:E([+-]?\d+))?$/i;
 
 class Formatter {
   readonly #max: number;
@@ -387,9 +389,44 @@ class Formatter {
         const ms = Date.parse(v);
         if (!Number.isNaN(ms)) return plain(this.#dateTime.format(ms));
       }
+      if (format === 'decimal') {
+        const text = this.#decimal(v);
+        if (text !== undefined) return plain(this.#cut(text));
+      }
       return this.asWritten(v);
     }
     return plain(this.#cut(canonical(v)));
+  }
+
+  /**
+   * An exact number stored as text, "1234.50" or "1.5E+3", in the locale's digits and separators
+   * with every digit kept: "1,234.50". Undefined when the text isn't a number.
+   */
+  #decimal(v: string): string | undefined {
+    const m = DECIMAL.exec(v);
+    if (!m) return undefined;
+    const exp = Number(m[4] ?? 0);
+    if (Math.abs(exp) > 100) return undefined;
+    let digits = m[2]! + (m[3] ?? '');
+    let point = m[2]!.length + exp;
+    if (point <= 0) {
+      digits = '0'.repeat(1 - point) + digits;
+      point = 1;
+    }
+    if (point > digits.length) digits = digits.padEnd(point, '0');
+    const int = digits.slice(0, point).replace(/^0+(?=\d)/, '');
+    const fraction = digits.slice(point);
+    const negative = m[1] === '-' && /[1-9]/.test(digits);
+    // The locale's sign, separator and their order, from a number that has all three.
+    return this.#number
+      .formatToParts(negative ? -1.5 : 1.5)
+      .map((p) => {
+        if (p.type === 'integer') return this.#number.format(BigInt(int));
+        if (p.type === 'decimal') return fraction ? p.value : '';
+        if (p.type === 'fraction') return [...fraction].map((d) => this.#number.format(Number(d))).join('');
+        return p.value;
+      })
+      .join('');
   }
 
   /** A text value as written: quoted, with invisible characters shown, cut at maxValueLength. */

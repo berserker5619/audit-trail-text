@@ -13,5 +13,7 @@
     "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The Mongoose entry is server-only and built with Node's types: tsconfig.mongoose.json.
+  "exclude": ["src/mongoose"]
 }

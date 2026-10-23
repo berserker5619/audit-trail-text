@@ -39,7 +39,8 @@ export interface Change {
 
 export interface ChangeDisplay {
   type?: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
-  format?: 'date' | 'date-time';
+  /** "decimal": an exact number stored as text, such as "12.50", shown as a number. */
+  format?: 'date' | 'date-time' | 'decimal';
   /** Label for this before value: a `oneOf` title, or the code itself for coded fields. */
   beforeLabel?: string;
   afterLabel?: string;

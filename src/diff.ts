@@ -823,7 +823,7 @@ function displayOf(ctx: Ctx, node: FieldNode | undefined, values: Values, list?:
     const type = node.kind === 'value' ? node.type : node.kind === 'object' ? 'object' : 'array';
     if (type !== undefined && DISPLAY_TYPES.has(type)) d.type = type as ChangeDisplay['type'];
     if (node.kind === 'value') {
-      if (node.format === 'date' || node.format === 'date-time') d.format = node.format;
+      if (node.format === 'date' || node.format === 'date-time' || node.format === 'decimal') d.format = node.format;
       const label = (v: unknown): Text | undefined => {
         if (node.atomic) return atomicLabel(ctx, node, v);
         if (!node.coded || v == null || v === '' || typeof v === 'object') return undefined;

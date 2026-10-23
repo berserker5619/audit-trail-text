@@ -1,0 +1,10 @@
+{
+  // audit-trail-text/mongoose: server-only, so it may use Node's types. The main entry is built
+  // without them (tsconfig.json), so it can't come to depend on Node by accident.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/mongoose"],
+  "exclude": []
+}
