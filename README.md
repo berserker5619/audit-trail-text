@@ -556,6 +556,33 @@ The plugin creates `{ model: 1, docId: 1, at: -1, _id: -1 }` and a sparse `{ imp
 | `auditTimeoutMS` | 2,000 | |
 | `logger` | `console` | |
 | `historyMethod` | `history` | |
+| `diff` | | Compute the changes yourself: see below |
+
+### Records another library describes
+
+When a record's shape comes from somewhere other than its Mongoose schema, pass `diff`, and the plugin uses it in place of the adapter it builds. It gets each document's two versions as plain JSON, after the conversion above, with `__v` and timestamps dropped. A create's before is `null`, and so is a delete's after. It returns the changes: none means no entry, and a throw is an `auditError` at the `diff` stage. Everything else, from the reads to transactions, `auditError` and history, works as before.
+
+With Dynamic Entity, every entity's records can live in one loose collection, each diffed against its own config, with its migrations and row ids applied the way DE does:
+
+```js
+import { diffEntityRecords, entityAuditAdapter } from '@dynamic-entity/core/history';
+
+const configs = { contact: contactConfig, deal: dealConfig };
+const adapters = Object.fromEntries(Object.entries(configs).map(([entity, config]) => [entity, entityAuditAdapter(config)]));
+
+const recordSchema = new mongoose.Schema({ entity: String }, { strict: false });
+recordSchema.plugin(auditTrail, {
+  diff(before, after) {
+    const { entity } = after ?? before;
+    return diffEntityRecords(before, after, configs[entity], { adapter: adapters[entity], migrations: migrations[entity] });
+  },
+});
+
+const Record = mongoose.model('Record', recordSchema);
+await Record.history(id, { language: 'de' }); // the same sentences as describeEntityChanges
+```
+
+With `snapshots: true`, the snapshot is the `before` of the `RECORD_DELETED` change that `diff(before, null)` returns, so it is stripped the way the diff strips a delete.
 
 ### Moving from mongoose-audit
 

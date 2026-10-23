@@ -69,7 +69,22 @@ export interface AuditTrailOptions {
   logger?: { warn(message: string): void };
   /** The name of the history static. Default "history". */
   historyMethod?: string;
+  /**
+   * Computes the changes instead of the adapter built from the Mongoose schema: for records whose
+   * shape another library describes, such as Dynamic Entity's `diffEntityRecords`. It gets each
+   * document's versions as plain JSON (`null` for a create or a delete) and returns the changes;
+   * none means no entry, and a throw is an `auditError` with `stage: "diff"`. `labels` and
+   * `strictLabels` are then not used.
+   */
+  diff?: AuditDiff;
 }
+
+/** A custom diff: see `AuditTrailOptions.diff`. */
+export type AuditDiff = (
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+  context: { model: string; operation: Operation },
+) => Change[];
 
 export interface Config {
   labels: AuditTrailOptions['labels'];
@@ -83,6 +98,7 @@ export interface Config {
   timeout: number;
   logger: { warn(message: string): void };
   historyMethod: string;
+  diff: AuditDiff | undefined;
 }
 
 const SINGLE = ['findOneAndUpdate', 'findOneAndReplace', 'updateOne', 'replaceOne', 'findOneAndDelete', 'deleteOne', 'findOneAndRemove'];
@@ -172,7 +188,22 @@ function config(o: AuditTrailOptions): Config {
     timeout: count(o.auditTimeoutMS, 2000, 'auditTimeoutMS'),
     logger: o.logger ?? console,
     historyMethod: o.historyMethod ?? 'history',
+    diff: diffOption(o.diff),
   };
+}
+
+function diffOption(diff: unknown): AuditDiff | undefined {
+  if (diff === undefined) return undefined;
+  if (typeof diff !== 'function') throw new DiffError('INVALID_OPTION', 'diff', 'diff must be a function');
+  return diff as AuditDiff;
+}
+
+/** The changes between two versions: the app's own `diff`, else the adapter's. */
+function changesFor(job: Job, cfg: Config, before: Json | null, after: Json | null): Change[] {
+  if (!cfg.diff) return diffRecords(before, after, job.info.adapter);
+  const changes = cfg.diff(before, after, { model: rootName(job.model), operation: job.operation });
+  if (!Array.isArray(changes)) throw new TypeError('the diff option must return an array of changes');
+  return changes;
 }
 
 /**
@@ -346,7 +377,7 @@ interface Job {
 function entryFor(job: Job, cfg: Config): AuditEntry | undefined {
   let changes: Change[];
   try {
-    changes = diffRecords(job.before, job.after, job.info.adapter);
+    changes = changesFor(job, cfg, job.before, job.after);
   } catch (error) {
     report(job.model, cfg, { model: rootName(job.model), docId: job.docId, operation: job.operation, stage: 'diff', error });
     return undefined;
@@ -356,8 +387,13 @@ function entryFor(job: Job, cfg: Config): AuditEntry | undefined {
   if (job.who.user !== undefined) entry.user = job.who.user;
   if (job.who.reason !== undefined) entry.reason = job.who.reason;
   if (cfg.snapshots && job.operation === 'update' && job.before) {
-    const stripped = diffRecords(job.before, null, job.info.adapter)[0]?.before;
-    if (stripped && typeof stripped === 'object') entry.snapshot = stripped as Json;
+    // The before value as a delete stores it: stripped of sensitive and ignored fields.
+    try {
+      const stripped = changesFor(job, cfg, job.before, null).find((c) => c.code === 'RECORD_DELETED')?.before;
+      if (stripped && typeof stripped === 'object') entry.snapshot = stripped as Json;
+    } catch {
+      // The entry is still written, without its snapshot.
+    }
   }
   // Fixed key order, so stored entries look alike.
   const { v, ...rest } = entry;
