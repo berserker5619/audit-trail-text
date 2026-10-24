@@ -57,12 +57,17 @@ jobs:
   # The Mongoose plugin against a real database (an in-memory replica set, so sessions and
   # transactions are real), on every Mongoose major it supports.
   mongoose:
-    name: Mongoose ${{ matrix.mongoose }}
+    name: MongoDB ${{ matrix.mongodb }}, Mongoose ${{ matrix.mongoose }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        mongodb: ['6.0.29', '7.0.45', '8.0.34']
         mongoose: [7, 8, 9]
+    env:
+      MONGOMS_VERSION: ${{ matrix.mongodb }}
+      # 6.0 and 7.0 have no Ubuntu 24.04 builds; the 22.04 builds run on it.
+      MONGOMS_DISTRO: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -76,13 +81,16 @@ jobs:
           VERSION=$(node -p "require('mongoose/package.json').version")
           echo "Mongoose $VERSION"
           case "$VERSION" in ${{ matrix.mongoose }}.*) ;; *) echo "::error::expected Mongoose ${{ matrix.mongoose }}, got $VERSION"; exit 1 ;; esac
-      - name: Mongoose tests
+      - name: Mongoose plugin tests, hooks and stream mode
         run: npm run test:mongoose
+      - name: Stream mode with the plain driver
+        run: npm run test:mongo
 
   # Integration with Dynamic Entity (integration/dynamic-entity, not published): every write is
-  # checked against DE's own diffEntityRecords, for typed and loose storage. Mongoose 8 runs the
-  # full 2,000 runs per config, split by config across three jobs; 7 and 9 run the core suite at
-  # 200. Each job also runs the path, plugin-off-versus-on and guarantee tests.
+  # checked against DE's own diffEntityRecords, for typed and loose storage, in hooks mode and in
+  # stream mode. Mongoose 8 runs the full 2,000 runs per config, split by config across six jobs;
+  # 7 and 9 run the core suite at 200. Each job also runs the path, plugin-off-versus-on and
+  # guarantee tests.
   dynamic-entity:
     name: Dynamic Entity, Mongoose ${{ matrix.mongoose }}${{ matrix.shard && format(' ({0})', matrix.shard) || '' }}
     runs-on: ubuntu-latest
@@ -91,9 +99,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { mongoose: 8, runs: 2000, shard: 'demo configs 1', only: 'complexFullTest,clients,employees,organizations,visitNotes' }
-          - { mongoose: 8, runs: 2000, shard: 'demo configs 2', only: 'insuranceClaims,people,patientIntake,itAssets' }
-          - { mongoose: 8, runs: 2000, shard: 'generated configs', only: 'allTypes,masked,renamed' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 1', only: 'complexFullTest,clients' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 2', only: 'employees,organizations' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 3', only: 'visitNotes,insuranceClaims' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 4', only: 'people,patientIntake' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 5', only: 'itAssets,allTypes' }
+          - { mongoose: 8, runs: 2000, shard: 'configs 6', only: 'masked,renamed' }
           - { mongoose: 7, runs: 200 }
           - { mongoose: 9, runs: 200 }
     defaults:

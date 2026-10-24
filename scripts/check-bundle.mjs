@@ -57,6 +57,22 @@ const mongooseEntry = await build({
 const loaded = Object.keys(mongooseEntry.metafile.inputs).filter((input) => !input.replace(/\\/g, '/').includes('dist/'));
 if (loaded.length) failures.push(`the Mongoose entry loads packages: ${loaded.join(', ')}`);
 
+// The same for the plain-driver entry: it never loads the MongoDB driver, or the Mongoose plugin.
+const mongoEntry = await build({
+  entryPoints: [fileURLToPath(new URL('../dist/mongo/index.js', import.meta.url))],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  write: false,
+  metafile: true,
+  logLevel: 'silent',
+});
+const mongoInputs = Object.keys(mongoEntry.metafile.inputs).map((input) => input.replace(/\\/g, '/'));
+const mongoLoaded = mongoInputs.filter((input) => !input.includes('dist/'));
+if (mongoLoaded.length) failures.push(`the MongoDB entry loads packages: ${mongoLoaded.join(', ')}`);
+const pluginFiles = mongoInputs.filter((input) => /dist\/mongoose\/(plugin|stream|schema|history|migrate)\.js$/.test(input));
+if (pluginFiles.length) failures.push(`the MongoDB entry pulls in the Mongoose plugin: ${pluginFiles.join(', ')}`);
+
 const min = Buffer.byteLength(code);
 const gzip = gzipSync(code).length;
 if (min > MAX_MIN_BYTES) failures.push(`minified main entry is ${min} bytes, over ${MAX_MIN_BYTES}`);

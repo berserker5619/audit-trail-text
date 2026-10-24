@@ -3,8 +3,8 @@
 // it the right versions of every document and stores what it returns.
 import type { EntityFormConfig } from '@dynamic-entity/core';
 import { diffEntityRecords, entityAuditAdapter } from '@dynamic-entity/core/history';
-import { auditTrail } from 'audit-trail-text/mongoose';
-import type { AuditErrorEvent, AuditTrailOptions } from 'audit-trail-text/mongoose';
+import { auditTrail, startAuditWatcher } from 'audit-trail-text/mongoose';
+import type { AuditErrorEvent, AuditTrailOptions, AuditWatcher, WatcherOptions } from 'audit-trail-text/mongoose';
 import { FIXTURES } from './configs.ts';
 import type { Fixture } from './configs.ts';
 import type { mongoose } from './db.ts';
@@ -29,6 +29,11 @@ export interface World {
   errors: AuditErrorEvent[];
   warnings: string[];
   plugin: boolean;
+  /** Stream mode: the watcher, and the who-field the writes carry. */
+  watcher?: AuditWatcher;
+  whoField?: string;
+  /** Waits until every write so far is recorded. */
+  settle(): Promise<void>;
 }
 
 const adapters = new Map<EntityFormConfig, ReturnType<typeof entityAuditAdapter>>();
@@ -69,7 +74,7 @@ export function world(
 ): World {
   const plugin = options.plugin !== false;
   const conn = base.useDb(options.db ?? `world${++worlds}`, { useCache: true });
-  const w: World = { conn, typed: new Map(), loose: undefined, calls: new Map(), errors: [], warnings: [], plugin };
+  const w: World = { conn, typed: new Map(), loose: undefined, calls: new Map(), errors: [], warnings: [], plugin, settle: async () => {} };
   const logger = { warn: (msg: string) => void w.warnings.push(msg) };
   const pluginOptions = (diff: AuditTrailOptions['diff'], extra: Partial<AuditTrailOptions> = {}): AuditTrailOptions => ({
     diff,
@@ -109,4 +114,42 @@ export function modelFor(w: World, storage: 'typed' | 'loose', entity: string): 
 /** A record as the app writes it: the loose model carries the entity name. */
 export function forStorage(storage: 'typed' | 'loose', entity: string, record: Rec): Rec {
   return storage === 'loose' ? { entity, ...record } : record;
+}
+
+/**
+ * A world in stream mode: the same models with `mode: 'stream'` (and a who-field unless
+ * `whoField: false`), and a watcher recording them from MongoDB's images.
+ */
+export async function streamWorld(
+  m: typeof mongoose,
+  base: mongoose.Connection,
+  options: { db?: string; fixtures?: Fixture[]; whoField?: string | false; plugin_options?: Partial<AuditTrailOptions>; watcher?: Partial<WatcherOptions> | false; clock?: () => Date } = {},
+): Promise<World> {
+  const whoField = options.whoField === false ? undefined : (options.whoField ?? '_audit');
+  const w = world(m, base, {
+    ...(options.db && { db: options.db }),
+    ...(options.fixtures && { fixtures: options.fixtures }),
+    ...(options.clock && { clock: options.clock }),
+    plugin_options: { mode: 'stream', ...(whoField && { whoField }), ...options.plugin_options },
+  });
+  const models = [...w.typed.values(), w.loose];
+  for (const model of models) await model.init();
+  if (whoField) w.whoField = whoField;
+  // Without a watcher: the app side only, for a watcher run elsewhere (another process).
+  if (options.watcher === false) return w;
+  const watcher = await startAuditWatcher({ connection: w.conn, models, enableImages: true, lease: { renewMS: 200, takeoverMS: 1000 }, logger: { warn: (msg: string) => void w.warnings.push(msg) }, ...options.watcher });
+  watcher.on('auditError', (e: any) => w.errors.push(e));
+  for (let i = 0; i < 100 && !watcher.active; i++) await new Promise((r) => setTimeout(r, 20));
+  w.watcher = watcher;
+  w.settle = async () => {
+    try {
+      await watcher.caughtUp(60_000);
+    } catch (error) {
+      // What the watcher was doing, so a stall can be told apart from a slow machine.
+      const state = await w.conn.db!.collection('audit_watcher_state').find({ _id: { $not: /^marker:/ } }).toArray();
+      const phase = (watcher as any)[Symbol.for('audit-trail-text.watcher.phase')];
+      throw new Error(`${String(error)}; active: ${watcher.active}; phase: ${phase}; errors: ${JSON.stringify(w.errors.slice(-5).map((e: any) => [e.stage, String(e.error)]))}; warnings: ${JSON.stringify(w.warnings.slice(-5))}; state: ${JSON.stringify(state)}`);
+    }
+  };
+  return w;
 }

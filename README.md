@@ -9,6 +9,7 @@ Give it two versions of a record and its JSON Schema, and it tells you what chan
 - Sensitive fields are reported without their values.
 - Changes are plain JSON your app can store, and describe later in any wording or language.
 - A Mongoose plugin, `audit-trail-text/mongoose`, that records every change to a document and reads it back as sentences.
+- Stream mode, for Mongoose or the plain driver (`audit-trail-text/mongo`): MongoDB's change streams hand over the exact document before and after every write, whoever made it.
 
 ```sh
 npm install audit-trail-text
@@ -513,7 +514,7 @@ Inside a transaction, every entry is exact. Outside one, the plugin reads a docu
 
 On Mongoose 7, `save()` is read back too, because Mongoose 7 stores empty objects that its in-memory document leaves out. So on 7, `save()` can also show another writer's change outside a transaction. Fields with `select: false` are always read separately, so they can show another writer's change too. Their values are never stored, so only whether they changed can be wrong.
 
-When attribution must be exact under concurrent writers, write in a transaction.
+When attribution must be exact under concurrent writers, write in a transaction, or use [stream mode](#stream-mode) with a who-field.
 
 ### Never blocks the app
 
@@ -610,6 +611,92 @@ mongoose-audit 1.0 logs to an `auditlog` collection, `{ ts, operation, location,
 - `historyFromSnapshots(log, adapter, { model })` reads one document's log entries as history without converting them.
 
 Remove mongoose-audit's plugin, add this one, then run the import; both on one schema at once is not supported. Old documents are diffed with today's schema, so a field since removed reads with its key in Title Case and `inSchema: false`. Apps still on Mongoose 6 or older upgrade to 7 first.
+
+## Stream mode
+
+In stream mode, a watcher reads a MongoDB change stream. MongoDB itself hands it the exact document before and after every write, so the recorded change is never wrong, whatever the concurrency. Writes that bypass Mongoose are covered too: the plain driver, other services, the shell, `bulkWrite`. The watcher writes the same entries to the same `audit_trail` collection, and `history` and `describeEntries` read both kinds together.
+
+| | Hooks mode (the default) | Stream mode |
+| --- | --- | --- |
+| Before and after values | Read by the plugin; racy outside transactions | MongoDB's pre- and post-images; exact |
+| Writes covered | Through Mongoose only | Every write to the collection |
+| Who made it | From `auditContext` | Exact in a transaction or with a who-field; otherwise no user |
+| Delay | Written during the write | Written by the watcher, usually well under a second later |
+| Needs | Any MongoDB | A replica set or sharded cluster (Atlas always is one), MongoDB 6.0+, images enabled per collection |
+
+**Setup, once per collection:** turn on pre- and post-images, in a migration or with the watcher's `enableImages: true`:
+
+```js
+await db.command({ collMod: 'orders', changeStreamPreAndPostImages: { enabled: true } });
+```
+
+**With Mongoose:** `mode: 'stream'` moves the recording to the watcher, and the plugin only attaches who and why. Start one watcher per deployment, in the app or, in production, a separate worker. Several may start: one at a time is active, through a lease, and another takes over within 30 seconds if it stops.
+
+```js
+import { auditTrail, startAuditWatcher } from 'audit-trail-text/mongoose';
+
+orderSchema.plugin(auditTrail, {
+  mode: 'stream',
+  whoField: '_audit',                 // optional: exact who without transactions
+  labels: { '/items#label': '{product}' },
+});
+
+const watcher = await startAuditWatcher({ connection: mongoose.connection, models: [Order, Customer] });
+watcher.on('auditError', (e) => log.warn(e));
+await watcher.caughtUp();             // every write made before this call is recorded
+await watcher.stop();
+```
+
+**With the plain driver:** no Mongoose at all. Each collection gets an adapter or a `diff` function.
+
+```js
+import { startAuditWatcher } from 'audit-trail-text/mongo';
+
+await startAuditWatcher({
+  client,
+  db: 'shop',
+  collections: {
+    orders: { adapter: jsonSchemaAdapter(orderSchema), whoField: '_audit' },
+    records: { diff: (before, after) => diffEntityRecords(before, after, configFor(after ?? before)) },
+  },
+});
+```
+
+### Who made it
+
+A change event says exactly what changed, but not who changed it. So who and why travel one of two ways:
+
+- **In a transaction**, nothing is needed. When a transaction commits, the plugin records who made its first audited write in `audit_context`. It does this outside the transaction and without waiting, so it can never abort or slow the transaction. The watcher matches the record to the transaction's changes, deletes included. It waits up to `contextWaitMS` (5 seconds) for the record. If the record fails or doesn't arrive in time, the changes have no user, and the transaction is unaffected.
+- **With a who-field** (`whoField`, opt-in), every write through the plugin carries `_audit: { user, reason, writeId }`, with a new `writeId` each time. The watcher credits a change only if that write changed the field. A write that didn't set it, such as one from a script or another service, has no user, and is never credited to the previous writer. The field is stripped from every change, payload and snapshot.
+
+Everything else has no user, but its change is still exact. That includes deletes outside a transaction: a delete has no after-image to carry a who-field. Use soft deletes (updates) or transactions where deletes need a name. `skip: true` works as in hooks mode, through the who-field or the transaction record.
+
+**What a who-field changes,** which is why it's opt-in:
+
+- Every write becomes a real write. An update that changed nothing now returns `modifiedCount: 1` and makes a change event other consumers see.
+- The field is stored in each document. The plugin adds it to the schema with `select: false`, so strict schemas keep it and the app's reads don't show it. Raw driver reads do.
+- A collection validator that forbids extra fields, or a document already near 16 MB, rejects the write. So with a who-field, never-blocks holds only where the collection accepts the field.
+- It reaches every write through the plugin: updates, pipeline updates, replacements, `save()`, `create()`, `insertMany()`, and `bulkWrite` on Mongoose 8 and 9 (7 has no `bulkWrite` middleware).
+
+### Reliability
+
+- **No duplicates.** Entries are written by an upsert on their change event's id (`eventId`, unique). Replaying an event after a crash rewrites the same entry. `_id` stays an ObjectId, so paging works as before.
+- **No losses across restarts.** The resume token is saved after each batch's entries are written. A first start saves its starting point before it reads anything.
+- **Gaps are recorded, never hidden.** A change whose image is missing (expired, or images not on yet) becomes a gap entry for that document: "A change at 10:02 could not be recorded". A watcher down longer than the oplog window records one gap per collection: "Changes between 10:02 and 14:40 were not recorded". `history` shows a collection's gaps alongside each document's entries. Both kinds emit `auditError` (`stage: 'preImage'`, `'postImage'` or `'resume'`), and the watcher carries on.
+- **One active watcher, fenced.** The lease is renewed every 10 seconds and taken over after 30, by server time. Each takeover increases an epoch, and only the current owner can save the resume token. A watcher that paused past a takeover can't move it back when it wakes.
+- **Large documents.** An event holding two images can pass MongoDB's 16 MB limit. The watcher asks for split events and joins them. On servers without `$changeStreamSplitLargeEvent`, such an event becomes a gap (`stage: 'tooLarge'`).
+- **Never stalls.** No step of the watcher's loop may wait longer than `stallTimeoutMS` (30 seconds) for a reply. Past it, the watcher reports `auditError` (`stage: 'stream'`, naming the step), reopens its stream and resumes from its saved position.
+- **Never blocks the app.** The watcher runs beside the app and never touches the write path. Its own failures emit `auditError` and skip only the event they concern, after three retries for transient errors.
+
+**Options:** `auditCollection` (default `audit_trail`), `stateCollection` (`audit_watcher_state`), `contextCollection` (`audit_context`), `enableImages` (`false`), `batchSize` (100), `lease: { renewMS, takeoverMS }`, `contextWaitMS` (5,000), `stallTimeoutMS` (30,000), `logger`, `name`, and `id`. `id` names the lease and saved position that watchers share: by default one per database, so a watcher whose models change keeps its place. Give watchers of separate sets of collections in one database their own `id`.
+
+**Moving from hooks mode.** Earlier entries stay and read as before. Hooks mode credits a user to nearly every write. Stream mode is exact, but without a who-field or a transaction, a write has no user. Cut over in two steps: deploy `mode: 'stream'` everywhere first, then start the watcher. Otherwise, instances still in hooks mode and the watcher both record the same writes. `startAuditWatcher` refuses a model it sees in hooks mode, but it can't see other processes.
+
+**Limits.**
+
+- Pre-images live on the server, in `config.system.preimages`, until they expire. They hold every field, sensitive ones included, so their retention is a security setting as well as a reliability one. The package never stores sensitive values, but it can't change what MongoDB keeps.
+- The watcher has to keep up within the oplog window and the pre-image retention. `rs.printReplicationInfo()` shows the oplog window. Retention is `changeStreamOptions.preAndPostImages.expireAfterSeconds`, set with `setClusterParameter`, which Atlas may restrict.
+- History lags a little. Code that writes and then reads history straight away awaits `watcher.caughtUp()`.
 
 ## Rendering
 

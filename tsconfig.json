@@ -15,5 +15,5 @@
   },
   "include": ["src"],
   // The Mongoose entry is server-only and built with Node's types: tsconfig.mongoose.json.
-  "exclude": ["src/mongoose"]
+  "exclude": ["src/mongoose", "src/mongo"]
 }

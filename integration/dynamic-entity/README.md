@@ -24,6 +24,25 @@ To run on another Mongoose, `npm install --no-save mongoose@7`.
 - **Plugin off and on** (`test/offon.test.ts`): generated workloads leave the same bytes and return the same results, with and without `background: true`.
 - **Guarantees** (`test/guarantees.test.ts`): transactions (commit, abort, retries forced with fail points), 50 concurrent writers (every entry exact inside transactions; outside them, every write has an entry and the misattribution rate is reported per path, as the plugin README's "Concurrent writes" describes), every failure from the plugin's never-blocks table (fail points and injected faults), history paging over 500 entries with one `at`, and changes stored by the published 1.2. After each file, no secret value appears anywhere in an audit collection.
 
+### Stream mode (1.4)
+
+The same models in `mode: 'stream'`, with a `_audit` who-field and a watcher, recorded from MongoDB's images:
+
+- **Stream oracle** (`test/stream-oracle.test.ts`): every event's changes must equal `diffEntityRecords(preImage, postImage, config)` for every config and both storage models, through every write path, with snapshots on. The who-field must appear in no change, payload or snapshot. `DE_STREAM_RUNS` sets the runs (default `DE_RUNS`).
+- **Stream guarantees** (`test/stream-guarantees.test.ts`):
+  - the 50-writer headline run with no transactions, through every write path including `bulkWrite` on Mongoose 8 and 9: every entry has its writer and its exact change
+  - a stale who-field, which gets no user
+  - writes outside Mongoose
+  - transactions: context matched, failed, late and aborted
+  - plugin off versus on, with and without a who-field
+  - an expired pre-image, which becomes a gap
+  - 10,000 writes with the watcher, running in its own process, killed outright 12 times (`DE_CRASH_WRITES`)
+  - failover with fencing
+  - lost history, which becomes a gap per collection
+  - a near-16 MB document
+  - never blocking, with the watcher stopped, broken or slow
+  - a leak scan of entries, context records and gaps
+
 ## Fixtures
 
 `fixtures/` holds the demo's seed data, copied by `scripts/refresh-fixtures.mjs` from `packages/demo-angular/src/app/mock/` at tag v3.3.1, along with the two configs `seed-enterprise.ts` imports and the `test_data.json` configs `seed-records.ts` is written against. `fixtures/SOURCE.json` records the commit (`0a9728c93580e8bf2a56f10841d5904e08dc230a`) and each file's sha256. The only change to the copies is `with { type: 'json' }` on JSON imports, which Node needs.

@@ -6,6 +6,7 @@ import type { AuditInfo } from './context.ts';
 import { history } from './history.ts';
 import type { HistoryOptions } from './history.ts';
 import { modelTitle, schemaInfo } from './schema.ts';
+import { streamHooks } from './stream.ts';
 import type { Any, SchemaInfo } from './schema.ts';
 import { restoreShared, sharedValues, toJson } from './values.ts';
 
@@ -19,7 +20,8 @@ export interface AuditEntry {
   model: string;
   /** The document's `_id`. */
   docId: unknown;
-  operation: Operation;
+  /** "gap" only for stream mode's gap entries: see GapEntry. */
+  operation: Operation | 'gap';
   at: Date;
   user?: unknown;
   reason?: string;
@@ -29,6 +31,34 @@ export interface AuditEntry {
   snapshot?: Json;
   /** The mongoose-audit `auditlog` entry this was imported from. */
   importedFrom?: unknown;
+  /** Stream mode: the change event this entry came from. Unique. */
+  eventId?: string;
+  /** How the entry was recorded. Entries from before 1.4 have none: they are "hooks". */
+  source?: 'hooks' | 'stream';
+  /** Gap entries: the time range not recorded, and why. */
+  from?: Date;
+  to?: Date;
+  stage?: string;
+  v: 1;
+}
+
+/**
+ * Stream mode: changes that could not be recorded. With `docId`, one change to that document
+ * (its image had expired); without, every change to the model's collection between `from` and `to`.
+ */
+export interface GapEntry {
+  _id?: unknown;
+  model: string;
+  docId?: unknown;
+  operation: 'gap';
+  at: Date;
+  from: Date;
+  to: Date;
+  changes: [];
+  /** Why: "preImage", "postImage", "tooLarge" or "resume". */
+  stage: string;
+  eventId?: string;
+  source: 'stream';
   v: 1;
 }
 
@@ -77,6 +107,20 @@ export interface AuditTrailOptions {
    * `strictLabels` are then not used.
    */
   diff?: AuditDiff;
+  /**
+   * "hooks" (the default): the plugin records each write as it happens. "stream": a watcher
+   * (startAuditWatcher) records every write from MongoDB's own pre- and post-images, and the
+   * plugin only attaches who and why. Needs a replica set and MongoDB 6.0 or later.
+   */
+  mode?: 'hooks' | 'stream';
+  /**
+   * Stream mode: a field every write through the plugin carries who and why in, such as
+   * "_audit", so the watcher can attribute writes exactly without transactions. Opt-in: every
+   * write becomes a real write, and the field is stored in each document.
+   */
+  whoField?: string;
+  /** Stream mode: where transactions' context records go. Default "audit_context". */
+  contextCollection?: string;
 }
 
 /** A custom diff: see `AuditTrailOptions.diff`. */
@@ -99,6 +143,9 @@ export interface Config {
   logger: { warn(message: string): void };
   historyMethod: string;
   diff: AuditDiff | undefined;
+  mode: 'hooks' | 'stream';
+  whoField: string | undefined;
+  contextCollection: string;
 }
 
 const SINGLE = ['findOneAndUpdate', 'findOneAndReplace', 'updateOne', 'replaceOne', 'findOneAndDelete', 'deleteOne', 'findOneAndRemove'];
@@ -133,6 +180,12 @@ export function auditTrail(schema: Any, options: AuditTrailOptions = {}): void {
     schema.static(cfg.historyMethod, function (this: Any, id: unknown, opts?: HistoryOptions) {
       return history(this, cfg.collection, id, opts);
     });
+  }
+
+  if (cfg.mode === 'stream') {
+    // The watcher records the changes; in the app, only who and why are attached.
+    streamHooks(schema, cfg);
+    return;
   }
 
   schema.pre('init', function (this: Any, raw: Any) {
@@ -189,7 +242,24 @@ function config(o: AuditTrailOptions): Config {
     logger: o.logger ?? console,
     historyMethod: o.historyMethod ?? 'history',
     diff: diffOption(o.diff),
+    mode: modeOption(o.mode),
+    whoField: whoFieldOption(o.whoField, o.mode),
+    contextCollection: o.contextCollection ?? 'audit_context',
   };
+}
+
+function modeOption(mode: unknown): 'hooks' | 'stream' {
+  if (mode === undefined || mode === 'hooks' || mode === 'stream') return (mode ?? 'hooks') as 'hooks' | 'stream';
+  throw new DiffError('INVALID_OPTION', 'mode', 'mode must be "hooks" or "stream"');
+}
+
+function whoFieldOption(field: unknown, mode: unknown): string | undefined {
+  if (field === undefined) return undefined;
+  if (typeof field !== 'string' || field === '' || field.includes('.') || field.startsWith('$')) {
+    throw new DiffError('INVALID_OPTION', 'whoField', 'whoField must be a top-level field name, such as "_audit"');
+  }
+  if (mode !== 'stream') throw new DiffError('INVALID_OPTION', 'whoField', 'whoField is for mode: "stream"');
+  return field;
 }
 
 function diffOption(diff: unknown): AuditDiff | undefined {
@@ -397,7 +467,7 @@ function entryFor(job: Job, cfg: Config): AuditEntry | undefined {
   }
   // Fixed key order, so stored entries look alike.
   const { v, ...rest } = entry;
-  return { ...rest, v };
+  return { ...rest, source: 'hooks', v };
 }
 
 /** Writes an entry now, or holds it until the transaction it belongs to commits. */
@@ -414,7 +484,7 @@ async function write(model: Any, entry: AuditEntry, budget: Budget, cfg: Config)
     const collection = auditCollection(model, cfg.collection);
     await budget.run(Promise.resolve(collection.insertOne(entry)));
   } catch (error) {
-    report(model, cfg, { model: entry.model, docId: entry.docId, operation: entry.operation, stage: 'write', error, entry });
+    report(model, cfg, { model: entry.model, docId: entry.docId, operation: entry.operation as Operation, stage: 'write', error, entry });
   }
 }
 

@@ -13,7 +13,8 @@
     "history",
     "change-tracking",
     "mongoose",
-    "mongoose-plugin"
+    "mongoose-plugin",
+    "change-streams"
   ],
   "homepage": "https://github.com/berserker5619/audit-trail-text#readme",
   "bugs": {
@@ -35,6 +36,10 @@
       "types": "./dist/mongoose/index.d.ts",
       "default": "./dist/mongoose/index.js"
     },
+    "./mongo": {
+      "types": "./dist/mongo/index.d.ts",
+      "default": "./dist/mongo/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -55,8 +60,9 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "check:bundle": "node scripts/check-bundle.mjs",
     "golden:update": "node test/golden.test.ts --update",
-    "prepublishOnly": "npm run typecheck && npm test && npm run test:mongoose && npm run build && npm run check:bundle",
-    "test:mongoose": "node --test \"test/mongoose/*.mongoose.ts\""
+    "prepublishOnly": "npm run typecheck && npm test && npm run test:mongoose && npm run test:mongo && npm run build && npm run check:bundle",
+    "test:mongoose": "node --test \"test/mongoose/*.mongoose.ts\"",
+    "test:mongo": "node --test \"test/mongo/*.mongo.ts\""
   },
   "peerDependencies": {
     "mongoose": "^7 || ^8 || ^9"

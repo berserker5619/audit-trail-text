@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 (unreleased)
+
+Stream mode: MongoDB's change streams hand the package the exact document before and after every write, so the recorded change is never wrong, whatever the concurrency, and writes that bypass Mongoose are covered too. Hooks mode stays the default and is unchanged.
+
+- **`audit-trail-text/mongo`**: `startAuditWatcher({ client, db, collections })`, a watcher for the plain MongoDB driver, with an adapter or a `diff` function per collection. It never imports the driver. Needs a replica set or sharded cluster and MongoDB 6.0+, with pre- and post-images on each collection (`enableImages: true` turns them on with `collMod`).
+- **Mongoose:** `mode: 'stream'` on the plugin, and `startAuditWatcher({ connection, models })` from `audit-trail-text/mongoose`, which uses each model's schema reading, labels and `diff`. Models in hooks mode are refused, with a warning.
+- **Who and why:** in a transaction, a context record written at commit, outside the transaction and not awaited, matched to the transaction's changes by `lsid.id` and `txnNumber`, deletes included. Without one, the opt-in `whoField` (`_audit: { user, reason, writeId }`) on every write through the plugin, credited only when the write changed it. Anything else has no user. The plugin owns the who-field: an update that touches it can't fail on it.
+- **Reliability:** entries upserted on a unique `eventId`, so replays after a crash rewrite the same entry. The resume token is saved after each batch. Watchers share one lease per database, taken over by server time, fenced by an epoch. Missing images and lost history are recorded as gap entries. Events too large for 16 MB are split and joined. A step of the watcher's loop that waits past `stallTimeoutMS` (30 s) restarts the stream from the saved position.
+- **`AuditEntry`:** new optional `eventId`, `source` (`'hooks'` on hooks-mode entries from 1.4), and gap entries (`operation: 'gap'`, `from`, `to`, `stage`, and `docId` for one document). `history` includes a collection's gaps in each document's history, and `describeEntries` describes gaps, with `gapMessages` for other wording. New types `GapEntry`, `GapMessages`, `DescribeEntriesOptions`, `AuditWatcher`, `WatcherOptions`, `WatcherErrorEvent`, `WatcherStage`, `CollectionSpec`.
+- New plugin options `mode`, `whoField` and `contextCollection`, refused with `INVALID_OPTION` when invalid.
+
 ## 1.3.0 (2026-10-23)
 
 A Mongoose plugin, in a new server-only entry, and one small core addition. The main entry, its zero dependencies and its stored changes are unchanged.

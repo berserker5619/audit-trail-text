@@ -51,9 +51,12 @@ jobs:
           TZ=Asia/Kolkata npm test
           TZ=America/Los_Angeles npm test
 
-      # CI runs these on Mongoose 7, 8 and 9; the release checks the version in the lockfile.
+      # CI runs these on MongoDB 6.0, 7.0 and 8.0 with Mongoose 7, 8 and 9; the release checks the versions in the lockfile.
       - name: Mongoose plugin tests
         run: npm run test:mongoose
+
+      - name: Stream mode with the plain driver
+        run: npm run test:mongo
 
       # Trusted publishing needs npm >= 11.5.1. Pinned, not @latest, so a release does not change
       # the tool that publishes it on the day a new npm comes out. Raise it deliberately.

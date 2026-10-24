@@ -12,9 +12,11 @@ import type { World } from './models.ts';
 type Rec = Record<string, any>;
 
 /** A stored document as Dynamic Entity sees it: without Mongoose's __v and timestamps. */
-export function clean(doc: Rec | null): Rec | null {
+export function clean(doc: Rec | null, whoField?: string): Rec | null {
   if (!doc) return null;
   const { __v: _v, createdAt: _c, updatedAt: _u, ...rest } = doc;
+  // Stream mode's who-field: never part of a change.
+  if (whoField) delete rest[whoField];
   return rest;
 }
 
@@ -50,9 +52,10 @@ export async function checked<T>(w: World, targets: Target[], write: () => Promi
   for (const t of targets) w.calls.delete(String(t.id));
   const result = await write();
   await auditFlush();
+  await w.settle();
   for (const [i, t] of targets.entries()) {
-    const was = clean(before[i]!.doc);
-    const now = clean(await stored(t.model, t.id));
+    const was = clean(before[i]!.doc, w.whoField);
+    const now = clean(await stored(t.model, t.id), w.whoField);
     const expected = json(oracle(t.fixture, was, now));
     const fresh = (await entriesOf(t.model, t.id)).slice(before[i]!.entries);
     const where = `${t.fixture.config.entity} ${String(t.id)}`;
@@ -71,7 +74,8 @@ export async function checked<T>(w: World, targets: Target[], write: () => Promi
     assert.deepEqual(json(entry.changes), expected, `${where}: stored changes differ from diffEntityRecords`);
     if (expect.operation) assert.equal(entry.operation, expect.operation, `${where}: operation`);
     // The versions the plugin diffed are the stored documents, unchanged by its conversion.
-    const call = w.calls.get(String(t.id))?.at(-1);
+    // The call for this entry's operation: a snapshot is a second call, as a delete.
+    const call = w.calls.get(String(t.id))?.filter((c) => c.operation === entry.operation).at(-1);
     assert.ok(call, `${where}: the plugin never called its diff`);
     assert.deepEqual(call.before, json(was), `${where}: the before version the plugin diffed is not the stored document`);
     assert.deepEqual(call.after, json(now), `${where}: the after version the plugin diffed is not the stored document`);

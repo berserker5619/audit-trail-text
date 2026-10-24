@@ -66,6 +66,15 @@ console.log('plugin entry loads');
 `);
   return sh('node plugin.js', esm).trim();
 });
+// The plain-driver entry never loads the driver either.
+check('ESM import of audit-trail-text/mongo, without the MongoDB driver installed', true, () => {
+  writeFileSync(join(esm, 'watcher.js'), `import { startAuditWatcher } from 'audit-trail-text/mongo';
+import { startAuditWatcher as fromMongoose } from 'audit-trail-text/mongoose';
+if (typeof startAuditWatcher !== 'function' || typeof fromMongoose !== 'function') throw new Error('missing exports');
+console.log('watcher entry loads');
+`);
+  return sh('node watcher.js', esm).trim();
+});
 
 // TypeScript consumers, strict, without skipLibCheck so the package's own .d.ts files are checked.
 const tsUse = `import { jsonSchemaAdapter, diffRecords, describe, type Change, type Sentence } from 'audit-trail-text';
@@ -74,6 +83,9 @@ const changes: Change[] = diffRecords({ phone: '1' }, { phone: '2' }, adapter);
 const sentences: Sentence[] = describe(changes, { locale: 'en-IN', translateLabel: (l, { kind }) => kind + l });
 export const first: string | undefined = sentences[0]?.text;
 import { auditTrail, type AuditEntry, type AuditTrailOptions } from 'audit-trail-text/mongoose';
+import { startAuditWatcher, type WatcherOptions } from 'audit-trail-text/mongo';
+export const watcherOptions: WatcherOptions = { enableImages: true, lease: { renewMS: 1000 } };
+export const start: typeof startAuditWatcher = startAuditWatcher;
 const options: AuditTrailOptions = { labels: { '/items#label': '{product}' }, many: true };
 export const plugin: (schema: unknown, options?: AuditTrailOptions) => void = auditTrail;
 export type Entry = AuditEntry;
