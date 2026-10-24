@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.0 (unreleased)
+## 1.4.0 (2026-10-24)
 
 Stream mode: MongoDB's change streams hand the package the exact document before and after every write, so the recorded change is never wrong, whatever the concurrency, and writes that bypass Mongoose are covered too. Hooks mode stays the default and is unchanged.
 
