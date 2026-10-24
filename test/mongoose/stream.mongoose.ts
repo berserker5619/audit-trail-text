@@ -177,6 +177,15 @@ test("the who-field is added with the schema's own typeKey", async () => {
   assert.ok((await M.collection.findOne({ _id: doc._id }))._audit.writeId);
 });
 
+test("the resume token is saved as events are recorded, on every driver (driver 5's tryNext doesn't move it)", async () => {
+  const { M, watcher } = await streamModel('TokenOrder');
+  await M.create([{ customer: 'A' }, { customer: 'B' }]);
+  await watcher.caughtUp();
+  const state = await conn.db!.collection('audit_watcher_state').findOne({ _id: `stream:${conn.db!.databaseName}` } as any);
+  assert.equal(typeof state?.['token']?._data, 'string', 'a token is saved');
+  await watcher.stop();
+});
+
 test('stream options are checked', () => {
   const s = new mongoose.Schema({ n: Number });
   assert.throws(() => s.plugin(auditTrail, { mode: 'live' } as any), (e: unknown) => e instanceof DiffError && e.path === 'mode');

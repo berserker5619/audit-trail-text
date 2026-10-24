@@ -412,20 +412,26 @@ class Watcher extends EventEmitter implements AuditWatcher {
   async #drain(): Promise<void> {
     const stream = this.#stream;
     let batch: { entries: Json[]; markers: string[] } = { entries: [], markers: [] };
+    // The last event's own token. Driver 5's tryNext doesn't move stream.resumeToken past the
+    // events it returns, so the newer of the two is saved.
+    let handled: Any;
     while (this.#active && !this.#stopping) {
       this.#phase = 'tryNext';
       const event: Any = await this.#bounded(stream.tryNext());
       if (event) {
         const whole = this.#join(event);
         this.#phase = `handle ${event.operationType} ${event.ns?.coll}${event.splitEvent ? ` fragment ${event.splitEvent.fragment}/${event.splitEvent.of}` : ''}`;
-        if (whole) await this.#bounded(this.#handle(whole, batch));
+        if (whole) {
+          await this.#bounded(this.#handle(whole, batch));
+          handled = whole._id;
+        }
       }
       // Written as soon as no fetched event is waiting: a burst is batched, a quiet stream isn't
       // held for the server's next empty wait.
       const waiting = stream.bufferedCount?.() ?? stream.cursor?.bufferedCount?.() ?? 0;
       if (!event || waiting === 0 || batch.entries.length >= this.#o.batchSize) {
         if (this.#fragments.length > 0) continue; // never save a token inside a split event
-        await this.#bounded(this.#flush(batch, stream.resumeToken));
+        await this.#bounded(this.#flush(batch, newer(stream.resumeToken, handled)));
         batch = { entries: [], markers: [] };
       }
     }
@@ -649,6 +655,16 @@ class Watcher extends EventEmitter implements AuditWatcher {
       // nothing more to do
     }
   }
+}
+
+/**
+ * The later of two resume tokens. A token's data begins with its cluster time, so their hex
+ * text sorts in time order.
+ */
+function newer(a: Any, b: Any): Any {
+  if (!a) return b;
+  if (!b) return a;
+  return typeof a._data === 'string' && typeof b._data === 'string' && b._data > a._data ? b : a;
 }
 
 /** A change event's id as text: its resume token's data. */
