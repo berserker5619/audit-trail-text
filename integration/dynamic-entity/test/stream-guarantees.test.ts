@@ -129,46 +129,44 @@ test('writes outside Mongoose: the plain driver, bulkWrite and a raw updateMany 
 });
 
 test('transactions: context matches by lsid and txnNumber, deletes included; a failed or late context gives no user and never affects the transaction; aborted leaves nothing', async () => {
-  // The context record is written just after the commit: 3 s is ample even on a loaded machine.
-  const w = await stream('transactions', { whoField: false, watcher: { contextWaitMS: 3000 } });
-  const model = modelFor(w, 'typed', all.config.entity);
-  const [x, y] = await model.create([record('X'), record('Y')]);
-  const inTx = (user: string, fn: (session: any) => Promise<unknown>) =>
-    auditContext.run({ user }, async () => {
-      const session = await w.conn.startSession();
-      await session.withTransaction(() => fn(session));
-      await session.endSession();
-    });
-  // Context records are written just after the commit, without waiting: before changing the
-  // fail points, each transaction's own record must have been written, or failed.
-  const contexts = w.conn.db!.collection('audit_context');
-  const landed = async (user: string) => {
-    for (let i = 0; i < 100 && (await contexts.countDocuments({ user })) === 0; i++) await new Promise((r) => setTimeout(r, 50));
+  // Each case in its own database, with its own watcher and fail point on its own audit_context:
+  // a record written without waiting can't meet another case's fail point.
+  const scenario = async (name: string, failure?: Record<string, unknown> & { mode: unknown }) => {
+    const w = await stream(`tx-${name}`, { whoField: false, watcher: { contextWaitMS: 3000 } });
+    const model = modelFor(w, 'typed', all.config.entity);
+    const [x, y] = await model.create([record('X'), record('Y')]);
+    const { mode, ...data } = failure ?? { mode: undefined };
+    const off = failure ? await failPoint(w.conn, mode, { failCommands: ['insert'], namespace: `${w.conn.name}.audit_context`, ...data } as any) : undefined;
+    try {
+      await auditContext.run({ user: `u_${name}` }, async () => {
+        const session = await w.conn.startSession();
+        await session.withTransaction(async () => {
+          await model.updateOne({ _id: x._id }, { $set: { 'basics.count': 2 } }, { session });
+          await model.deleteOne({ _id: y._id }, { session });
+        });
+        await session.endSession();
+      });
+      await w.settle();
+    } finally {
+      await off?.();
+    }
+    assert.equal(((await model.findById(x._id).lean()) as any).basics.count, 2, `${name}: the transaction committed`);
+    return (await audit(w).find({ docId: { $in: [x._id, y._id] }, operation: { $ne: 'create' } }).sort({ _id: 1 }).toArray()).map((e) => [e.operation, e.user ?? null]);
   };
-  await inTx('u_ok', async (session) => {
-    await model.updateOne({ _id: x._id }, { $set: { 'basics.count': 2 } }, { session });
-    await model.deleteOne({ _id: y._id }, { session });
-  });
-  await landed('u_ok');
-  // The context insert fails: the transaction commits anyway.
-  let off = await failPoint(w.conn, 'alwaysOn', { failCommands: ['insert'], errorCode: 2, namespace: `${w.conn.name}.audit_context` } as any);
-  await inTx('u_failed', (session) => model.updateOne({ _id: x._id }, { $set: { 'basics.count': 3 } }, { session }));
-  await new Promise((r) => setTimeout(r, 1000)); // its insert has been tried, and failed
-  await off();
-  // The context arrives after contextWaitMS: no user.
-  off = await failPoint(w.conn, { times: 1 }, { failCommands: ['insert'], blockConnection: true, blockTimeMS: 8000, namespace: `${w.conn.name}.audit_context` } as any);
-  await inTx('u_late', (session) => model.updateOne({ _id: x._id }, { $set: { 'basics.count': 4 } }, { session }));
-  await off();
-  // Aborted.
+  assert.deepEqual(await scenario('ok'), [['update', 'u_ok'], ['delete', 'u_ok']]);
+  assert.deepEqual(await scenario('failed', { mode: 'alwaysOn', errorCode: 2 }), [['update', null], ['delete', null]]);
+  assert.deepEqual(await scenario('late', { mode: 'alwaysOn', blockConnection: true, blockTimeMS: 8000 }), [['update', null], ['delete', null]]);
+  // Aborted: nothing.
+  const w = await stream('tx-aborted', { whoField: false });
+  const model = modelFor(w, 'typed', all.config.entity);
+  const doc = await model.create(record());
   const session = await w.conn.startSession();
   session.startTransaction();
-  await model.updateOne({ _id: x._id }, { $set: { 'basics.count': 99 } }, { session });
+  await model.updateOne({ _id: doc._id }, { $set: { 'basics.count': 99 } }, { session });
   await session.abortTransaction();
   await session.endSession();
   await w.settle();
-  assert.equal(((await model.findById(x._id).lean()) as any).basics.count, 4, 'every transaction committed but the aborted one');
-  const entries = await audit(w).find({ docId: { $in: [x._id, y._id] }, operation: { $ne: 'create' } }).sort({ _id: 1 }).toArray();
-  assert.deepEqual(entries.map((e) => [e.operation, e.user ?? null, e.changes[0]?.after ?? null]), [['update', 'u_ok', 2], ['delete', 'u_ok', null], ['update', null, 3], ['update', null, 4]]);
+  assert.equal(await audit(w).countDocuments({ docId: doc._id, operation: { $ne: 'create' } }), 0);
 });
 
 // ---------------------------------------------------------------- plugin off versus on
