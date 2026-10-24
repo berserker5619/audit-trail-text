@@ -275,9 +275,13 @@ class Watcher extends EventEmitter implements AuditWatcher {
       const took = !this.#active || state.epoch !== this.#epoch;
       this.#epoch = state.epoch!;
       if (took && !this.#active) {
+        // A first start's position is fixed before start() returns: a write made once
+        // startAuditWatcher has resolved is always after it.
+        const begin = await this.#startingPoint(state);
+        if (this.#stopping) return;
         this.#active = true;
         this.emit('active');
-        this.#loop = this.#run(state).catch((error) => this.#report({ stage: 'stream', error }));
+        this.#loop = this.#run(begin).catch((error) => this.#report({ stage: 'stream', error }));
       }
     } catch (error) {
       this.#report({ stage: 'lease', error });
@@ -367,7 +371,7 @@ class Watcher extends EventEmitter implements AuditWatcher {
   }
 
   async #run(initial: State): Promise<void> {
-    let state: State | null = await this.#startingPoint(initial);
+    let state: State | null = initial;
     let failures = 0;
     while (this.#active && !this.#stopping) {
       try {

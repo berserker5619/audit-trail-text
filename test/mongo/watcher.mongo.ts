@@ -351,3 +351,21 @@ test('a stalled step (a reply that never comes) restarts the stream from the sav
   assert.ok(errors.some((e) => e.stage === 'stream' && /stalled for 500 ms in tryNext/.test(String(e.error))), JSON.stringify(errors.map((e) => String(e.error))));
   await watcher.stop();
 });
+
+test('a first start: writes made the moment startAuditWatcher returns are recorded', async () => {
+  // The starting position must be fixed before startAuditWatcher returns. A slow reply to the
+  // command that fixes it (held here by a fail point) must not let earlier-applied writes slip by.
+  const db = client.db(dbName('first'));
+  const orders = await imaged(db, 'orders');
+  const admin = client.db('admin');
+  await admin.command({ configureFailPoint: 'failCommand', mode: { times: 1 }, data: { failCommands: ['ping'], blockConnection: true, blockTimeMS: 500 } });
+  try {
+    const watcher = await startAuditWatcher({ client, db: db.databaseName, collections: { orders: { adapter } }, ...fast });
+    await Promise.all(Array.from({ length: 20 }, (_, n) => orders.insertOne({ _id: n, qty: 1 })));
+    await watcher.caughtUp();
+    assert.equal((await entries(db)).length, 20, 'every write after startAuditWatcher returned is recorded');
+    await watcher.stop();
+  } finally {
+    await admin.command({ configureFailPoint: 'failCommand', mode: 'off' });
+  }
+});
