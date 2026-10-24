@@ -475,7 +475,11 @@ class Watcher extends EventEmitter implements AuditWatcher {
 
   /** Writes entries keyed by eventId, so a replayed event rewrites its entry rather than adding one. */
   async #write(entries: Json[]): Promise<void> {
-    const ops = entries.map((entry) => ({ updateOne: { filter: { eventId: entry['eventId'] }, update: { $setOnInsert: entry }, upsert: true } }));
+    // The $type clause lets the planner use the partial unique index on eventId; without it every
+    // upsert scans the whole audit collection.
+    const ops = entries.map((entry) => ({
+      updateOne: { filter: { $and: [{ eventId: entry['eventId'] }, { eventId: { $type: 'string' } }] }, update: { $setOnInsert: entry }, upsert: true },
+    }));
     const audit = this.#db.collection(this.#o.auditCollection);
     for (let attempt = 0; ; attempt++) {
       try {

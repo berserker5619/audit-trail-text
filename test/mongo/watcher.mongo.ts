@@ -51,6 +51,16 @@ test(`MongoDB ${version}: inserts, updates, replaces and deletes are recorded ex
   await watcher.stop();
 });
 
+test('entry upserts use the eventId index, not a collection scan', async () => {
+  const { db, orders, watcher } = await setup('index');
+  await orders.insertMany(Array.from({ length: 20 }, (_, i) => ({ _id: i, qty: i })));
+  await watcher.caughtUp();
+  const stats = await db.collection('audit_trail').aggregate([{ $indexStats: {} }]).toArray();
+  const ops = Number(stats.find((s: any) => s.name === 'eventId_1')?.accesses.ops ?? 0);
+  assert.ok(ops >= 20, `eventId_1 used ${ops} times for 20 upserts`);
+  await watcher.stop();
+});
+
 test('writes outside any plugin, bulkWrite and updateMany included, are all recorded, with no user', async () => {
   const { db, orders, watcher } = await setup('outside');
   await orders.insertMany([{ _id: 1, qty: 1 }, { _id: 2, qty: 1 }]);
