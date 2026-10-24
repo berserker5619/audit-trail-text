@@ -181,7 +181,10 @@ test('narrowed filters: a filter matching several documents, with sort, records 
   await Order.create([{ customer: 'A', status: 'open' }, { customer: 'B', status: 'open' }, { customer: 'C', status: 'open' }]);
   const written = await Order.findOneAndUpdate({ status: 'open' }, { status: 'paid' }, { sort: { customer: -1 }, returnDocument: 'after' });
   assert.equal(written.customer, 'C');
-  await Order.updateOne({ status: 'open' }, { status: 'shipped' }, { sort: { customer: 1 } } as any);
+  // updateOne takes a sort from MongoDB 8.0; before, the server refuses it, plugin or not.
+  const server = Number(String((await conn.db!.admin().command({ buildInfo: 1 })).version).split('.')[0]);
+  if (server >= 8) await Order.updateOne({ status: 'open' }, { status: 'shipped' }, { sort: { customer: 1 } } as any);
+  else await Order.findOneAndUpdate({ status: 'open' }, { status: 'shipped' }, { sort: { customer: 1 } });
   const updates = (await entries(Order)).filter((e) => e.operation === 'update');
   assert.equal(String(updates[0]!.docId), String(written._id));
   const shipped = await Order.findOne({ status: 'shipped' });

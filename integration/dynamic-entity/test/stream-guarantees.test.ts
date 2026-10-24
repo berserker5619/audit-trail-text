@@ -139,13 +139,21 @@ test('transactions: context matches by lsid and txnNumber, deletes included; a f
       await session.withTransaction(() => fn(session));
       await session.endSession();
     });
+  // Context records are written just after the commit, without waiting: before changing the
+  // fail points, each transaction's own record must have been written, or failed.
+  const contexts = w.conn.db!.collection('audit_context');
+  const landed = async (user: string) => {
+    for (let i = 0; i < 100 && (await contexts.countDocuments({ user })) === 0; i++) await new Promise((r) => setTimeout(r, 50));
+  };
   await inTx('u_ok', async (session) => {
     await model.updateOne({ _id: x._id }, { $set: { 'basics.count': 2 } }, { session });
     await model.deleteOne({ _id: y._id }, { session });
   });
+  await landed('u_ok');
   // The context insert fails: the transaction commits anyway.
   let off = await failPoint(w.conn, 'alwaysOn', { failCommands: ['insert'], errorCode: 2, namespace: `${w.conn.name}.audit_context` } as any);
   await inTx('u_failed', (session) => model.updateOne({ _id: x._id }, { $set: { 'basics.count': 3 } }, { session }));
+  await new Promise((r) => setTimeout(r, 1000)); // its insert has been tried, and failed
   await off();
   // The context arrives after contextWaitMS: no user.
   off = await failPoint(w.conn, { times: 1 }, { failCommands: ['insert'], blockConnection: true, blockTimeMS: 8000, namespace: `${w.conn.name}.audit_context` } as any);

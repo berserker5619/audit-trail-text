@@ -84,5 +84,7 @@ test('the edits were real: most documents checked changed, and no secret reached
   assert.ok(stats.editsChanged < stats.edits, 'some edits change nothing, such as a renamed option');
   const scanned = await assertNoSecretsInAudit(conn);
   t.diagnostic(`${scanned.entries} audit entries scanned; ${scanned.secretsInRecords} secret values in the records`);
-  assert.ok(scanned.secretsInRecords > 0);
+  // Only configs with password or maskData fields write secrets.
+  const sensitive = FIXTURES.filter((f) => !ONLY || ONLY.includes(f.config.entity)).some((f) => JSON.stringify(f.config).match(/"maskData":true|"type":"password"/));
+  if (sensitive) assert.ok(scanned.secretsInRecords > 0);
 });
